@@ -111,7 +111,8 @@
 import { ref, onMounted, watch, toRefs, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, Bottom, Top } from '@element-plus/icons-vue'
-import { ChatConversationApi, ChatConversationVO } from '@/api/graph/chat/conversation'
+import service from '@/config/axios'
+import type { ChatConversationVO } from '@/api/graph/chat/conversation'
 import roleAvatarDefaultImg from '@/assets/ai/gpt.svg'
 
 const message = useMessage()
@@ -138,17 +139,6 @@ const emits = defineEmits([
   'onConversationDelete'
 ])
 
-const searchConversation = async () => {
-  if (!searchName.value.trim().length) {
-    conversationMap.value = await getConversationGroupByCreateTime(conversationList.value)
-  } else {
-    const filterValues = conversationList.value.filter((item) => {
-      return item.title.includes(searchName.value.trim())
-    })
-    conversationMap.value = await getConversationGroupByCreateTime(filterValues)
-  }
-}
-
 const getTimestamp = (time: Date | string | undefined): number => {
   if (!time) return 0
   if (time instanceof Date) {
@@ -168,11 +158,9 @@ const getChatConversationList = async () => {
       loading.value = true
     }, 50)
 
-    // 👇 核心修复：确保 conversationList 一定是数组
-    const res = await ChatConversationApi.getChatConversationMyList()
+    const res = await service.get({ url: '/graph/chat/conversation/my-list' })
     conversationList.value = Array.isArray(res) ? res : []
     
-    // 👇 安全排序
     if (conversationList.value.length > 0) {
       conversationList.value.sort((a, b) => {
         const timeA = getTimestamp(a.createTime)
@@ -189,9 +177,7 @@ const getChatConversationList = async () => {
 
     conversationMap.value = await getConversationGroupByCreateTime(conversationList.value)
   } finally {
-    if (loadingTime.value) {
-      clearTimeout(loadingTime.value)
-    }
+    if (loadingTime.value) clearTimeout(loadingTime.value)
     loading.value = false
   }
 }
@@ -235,13 +221,13 @@ const getConversationGroupByCreateTime = async (list: ChatConversationVO[]) => {
   return groupMap
 }
 
-// 关键：新建对话后自动跳转
 const createConversation = async () => {
-  const res = await ChatConversationApi.createChatConversationMy({})
-  const conversationId = res.data
-
+  const res = await service.post({
+    url: '/graph/chat/conversation/create-my',
+    data: { title: '新对话' }
+  })
+  const conversationId = res.data || res
   await getChatConversationList()
-
   const newConversation = conversationList.value.find(item => item.id === conversationId)
   if (newConversation) {
     activeConversationId.value = conversationId
@@ -259,26 +245,25 @@ const updateConversationTitle = async (conversation: ChatConversationVO) => {
     inputErrorMessage: '标题不能为空',
     inputValue: conversation.title
   })
-  await ChatConversationApi.updateChatConversationMy({
-    id: conversation.id,
-    title: value
-  } as ChatConversationVO)
+  await service.put({
+    url: '/graph/chat/conversation/update-my',
+    data: {
+      id: conversation.id,
+      title: value
+    }
+  })
   message.success('重命名成功')
   await getChatConversationList()
-  const filterConversationList = conversationList.value.filter((item) => {
-    return item.id === conversation.id
-  })
-  if (filterConversationList.length > 0) {
-    if (activeConversationId.value === filterConversationList[0].id) {
-      emits('onConversationClick', filterConversationList[0])
-    }
+  const filterConversationList = conversationList.value.filter((item) => item.id === conversation.id)
+  if (filterConversationList.length > 0 && activeConversationId.value === filterConversationList[0].id) {
+    emits('onConversationClick', filterConversationList[0])
   }
 }
 
 const deleteChatConversation = async (conversation: ChatConversationVO) => {
   try {
     await message.delConfirm(`是否确认删除对话 - ${conversation.title}?`)
-    await ChatConversationApi.deleteChatConversationMy(conversation.id)
+    await service.delete({ url: `/graph/chat/conversation/delete-my?id=${conversation.id}` })
     message.success('对话已删除')
     await getChatConversationList()
     emits('onConversationDelete', conversation)
@@ -288,8 +273,8 @@ const deleteChatConversation = async (conversation: ChatConversationVO) => {
 const handleClearConversation = async () => {
   try {
     await message.confirm('确认后对话会全部清空，置顶的对话除外。')
-    await ChatConversationApi.deleteChatConversationMyByUnpinned()
-    ElMessage({ message: '操作成功!', type: 'success' })
+    await service.delete({ url: '/graph/chat/conversation/delete-by-unpinned' })
+    ElMessage.success('操作成功!')
     activeConversationId.value = null
     await getChatConversationList()
     emits('onConversationClear')
@@ -299,15 +284,27 @@ const handleClearConversation = async () => {
 const handleTop = async (conversation: ChatConversationVO) => {
   conversation.pinned = !conversation.pinned
   conversation.pinnedTime = conversation.pinned ? new Date() : undefined
-  await ChatConversationApi.updateChatConversationMy(conversation)
+  await service.put({
+    url: '/graph/chat/conversation/update-my',
+    data: conversation
+  })
   await getChatConversationList()
+}
+
+const searchConversation = async () => {
+  if (!searchName.value.trim().length) {
+    conversationMap.value = await getConversationGroupByCreateTime(conversationList.value)
+  } else {
+    const filterValues = conversationList.value.filter((item) =>
+      item.title.includes(searchName.value.trim())
+    )
+    conversationMap.value = await getConversationGroupByCreateTime(filterValues)
+  }
 }
 
 const { activeId } = toRefs(props)
 watch(activeId, async (newValue) => {
-  if (newValue) {
-    activeConversationId.value = Number(newValue)
-  }
+  if (newValue) activeConversationId.value = Number(newValue)
 })
 
 defineExpose({ createConversation })
@@ -316,11 +313,9 @@ onMounted(async () => {
   await getChatConversationList()
   if (props.activeId) {
     activeConversationId.value = Number(props.activeId)
-  } else {
-    if (conversationList.value.length) {
-      activeConversationId.value = conversationList.value[0].id
-      emits('onConversationClick', conversationList.value[0])
-    }
+  } else if (conversationList.value.length) {
+    activeConversationId.value = conversationList.value[0].id
+    emits('onConversationClick', conversationList.value[0])
   }
 })
 </script>

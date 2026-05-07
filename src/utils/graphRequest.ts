@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { getGraphToken } from './graph-auth'
 
 const graphRequest = axios.create({
   baseURL: import.meta.env.VITE_BASE_URL || '/admin-api',
@@ -9,11 +8,12 @@ const graphRequest = axios.create({
 // 请求拦截器
 graphRequest.interceptors.request.use(
   (config) => {
-    const token = getGraphToken()
+    // 若依 / 芋道 框架：只需要 token 头！！！
+    const token = localStorage.getItem('ACCESS_TOKEN')
     if (token) {
-      (config.headers as any)['token'] = token
+      config.headers['token'] = token.replace(/"/g, '') // 关键！！！
     }
-    (config.headers as any)['tenant-id'] = '1'
+    config.headers['tenant-id'] = '1'
     return config
   },
   (error) => Promise.reject(error)

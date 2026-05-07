@@ -108,7 +108,6 @@
 import { User, Lock } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { FormRules } from 'element-plus'
-import { setGraphToken, setGraphUser, setGraphVisitorMode } from '@/utils/graph-auth'
 import request from '@/config/axios'
 
 defineOptions({ name: 'GraphLogin' })

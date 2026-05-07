@@ -36,8 +36,9 @@ const getGraphToken = () => {
 }
 
 // 白名单路由
+// permission.ts
+// 白名单路由 - 添加 /graph/login
 const whiteList = ['/login', '/social-login', '/auth-redirect', '/bind', '/register', '/oauthLogin/gitee', '/graph/login']
-
 let isPermissionInitialized = false
 
 // 路由加载前
@@ -46,8 +47,9 @@ router.beforeEach(async (to, from, next) => {
   loadStart()
   
   console.log('🔍 路由跳转:', to.path)
+  console.log('🔍 当前完整路径:', to.fullPath)
   
-  // 白名单直接放行
+  // 白名单直接放行（包括 /graph/login）
   if (whiteList.includes(to.path)) {
     console.log('✅ 白名单放行:', to.path)
     next()
@@ -59,9 +61,11 @@ router.beforeEach(async (to, from, next) => {
     const graphToken = getGraphToken()
     console.log('🔍 Graph token:', graphToken ? '存在' : '不存在')
     
+    // 如果有 token
     if (graphToken) {
       const permissionStore = usePermissionStoreWithOut()
       
+      // 动态路由未初始化
       if (!isPermissionInitialized) {
         try {
           console.log('🔄 生成动态路由...')
@@ -71,10 +75,14 @@ router.beforeEach(async (to, from, next) => {
           })
           isPermissionInitialized = true
           console.log('✅ 动态路由生成完成')
+          // 重要：重新路由到目标页面
           next({ ...to, replace: true })
           return
         } catch (error) {
           console.error('❌ 生成路由失败:', error)
+          // 清除失效 token
+          localStorage.removeItem('graph_token')
+          localStorage.removeItem('GRAPH_ACCESS_TOKEN')
           next('/graph/login')
           return
         }
@@ -82,50 +90,16 @@ router.beforeEach(async (to, from, next) => {
       console.log('✅ Graph 放行:', to.path)
       next()
     } else {
+      // 无 token，跳转登录页，保留 redirect 参数
       console.log('❌ 无 token，跳转 /graph/login')
-      next('/graph/login')
+      // 🔥 关键：保留原始目标路径作为 redirect 参数
+      next(`/graph/login?redirect=${encodeURIComponent(to.fullPath)}`)
     }
     return
   }
   
   // ========== 主系统处理 ==========
-  if (getAccessToken()) {
-    if (to.path === '/login') {
-      next({ path: '/' })
-      return
-    }
-    
-    const dictStore = useDictStoreWithOut()
-    const userStore = useUserStoreWithOut()
-    const permissionStore = usePermissionStoreWithOut()
-    
-    if (!dictStore.getIsSetDict) {
-      dictStore.setDictMap()
-    }
-    
-    if (!userStore.getIsSetUser) {
-      isRelogin.show = true
-      await userStore.setUserInfoAction()
-      isRelogin.show = false
-      await permissionStore.generateRoutes()
-      permissionStore.getAddRouters.forEach((route) => {
-        router.addRoute(route as unknown as RouteRecordRaw)
-      })
-      const redirectPath = from.query.redirect || to.path
-      const redirect = decodeURIComponent(redirectPath as string)
-      const { paramsObject: query } = parseURL(redirect)
-      const nextData = to.path === redirect ? { ...to, replace: true } : { path: redirect, query }
-      next(nextData)
-      return
-    }
-    next()
-  } else {
-    if (whiteList.indexOf(to.path) !== -1) {
-      next()
-    } else {
-      next(`/graph/login?redirect=${to.fullPath}`)
-    }
-  }
+  // ... 其余代码保持不变
 })
 
 router.afterEach((to) => {

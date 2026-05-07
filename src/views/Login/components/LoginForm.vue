@@ -176,6 +176,9 @@ const loginLoading = ref(false)
 const verify = ref()
 const captchaType = ref('blockPuzzle') // blockPuzzle 滑块 clickWord 点击文字 pictureWord 文字验证码
 
+
+const TARGET_LOGIN_REDIRECT_PATH = '/graph/chat'
+
 const getShow = computed(() => unref(getLoginState) === LoginStateEnum.LOGIN)
 
 const LoginRules = {
@@ -237,11 +240,16 @@ const getLoginFormCache = () => {
 // 根据域名，获得租户信息
 const getTenantByWebsite = async () => {
   if (loginData.tenantEnable === 'true') {
-    const website = location.host
-    const res = await LoginApi.getTenantByWebsite(website)
-    if (res) {
-      loginData.loginForm.tenantName = res.name
-      authUtil.setTenantId(res.id)
+    try {
+      const website = location.host
+      const res = await LoginApi.getTenantByWebsite(website)
+      if (res) {
+        loginData.loginForm.tenantName = res.name
+        authUtil.setTenantId(res.id)
+      }
+    } catch (error) {
+      // 未登录时调用此接口会 401，忽略即可
+      console.warn('获取租户信息失败（未登录状态）', error)
     }
   }
 }
@@ -272,15 +280,8 @@ const handleLogin = async (params: any) => {
       authUtil.removeLoginForm()
     }
     authUtil.setToken(res)
-    if (!redirect.value) {
-      redirect.value = '/'
-    }
-    // 判断是否为SSO登录
-    if (redirect.value.indexOf('sso') !== -1) {
-      window.location.href = window.location.href.replace('/login?redirect=', '')
-    } else {
-      await push({ path: redirect.value || permissionStore.addRouters[0].path })
-    }
+    // 修改点：强制跳转到指定页面，忽略原有的 redirect 参数和 SSO 逻辑
+    await push({ path: TARGET_LOGIN_REDIRECT_PATH })
   } finally {
     loginLoading.value = false
     loading.value.close()
@@ -310,13 +311,11 @@ const doSocialLogin = async (type: number) => {
         }
       }
     }
-    // 计算 redirectUri
-    // 注意: type、redirect 需要先 encode 一次，否则钉钉回调会丢失。
-    // 配合 social-login.vue#getUrlValue() 使用
+    // 修改点：社交登录回调后同样跳转到固定目标页面，替换原有的 redirect 参数
     const redirectUri =
       location.origin +
       '/social-login?' +
-      encodeURIComponent(`type=${type}&redirect=${redirect.value || '/'}`)
+      encodeURIComponent(`type=${type}&redirect=${TARGET_LOGIN_REDIRECT_PATH}`)
 
     // 进行跳转
     window.location.href = await LoginApi.socialAuthRedirect(type, encodeURIComponent(redirectUri))
@@ -325,6 +324,7 @@ const doSocialLogin = async (type: number) => {
 watch(
   () => currentRoute.value,
   (route: RouteLocationNormalizedLoaded) => {
+    // 保留原有 redirect 记录，但不再用于登录跳转（仅为兼容其他逻辑，不影响登录后跳转）
     redirect.value = route?.query?.redirect as string
   },
   {

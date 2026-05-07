@@ -1,4 +1,5 @@
-import { service } from './service'
+// src/config/axios/index.ts
+import { service } from './service'  // 使用已有的 service 实例
 
 import { config } from './config'
 
@@ -14,6 +15,7 @@ const request = (option: any) => {
     }
   })
 }
+
 export default {
   get: async <T = any>(option: any) => {
     const res = await request({ method: 'GET', ...option })

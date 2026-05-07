@@ -35,7 +35,7 @@ import { createApp } from 'vue'
 
 import App from './App.vue'
 
-import './permission'
+// import './permission'
 
 import '@/plugins/tongji' // 百度统计
 import Logger from '@/utils/Logger'

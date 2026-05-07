@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import graphRequest from '@/utils/graphRequest'
+import service from '@/config/axios'  // 替换 graphRequest
 import Left from './components/Left.vue'
 import Right from './components/Right.vue'
 
@@ -29,9 +29,8 @@ const isGenerating = ref(false)
 const isStart = ref(false)
 const isEnd = ref(true)
 const leftRef = ref<InstanceType<typeof Left>>()
-// 移除了未使用的 rightRef
 
-// 定义后端返回的数据结构（实际是 res.data 的内容）
+// 定义后端返回的数据结构
 interface RelationResponse {
   code: number
   msg?: string
@@ -103,12 +102,12 @@ const handleGenerate = async () => {
   isGenerating.value = true
 
   try {
-    // graphRequest 返回的是 AxiosResponse，真实数据在 .data 中
-    const res = await graphRequest.get<RelationResponse>('/graph/map/entity/relation', {
+    // 使用主系统 service 发起 GET 请求
+    const result = await service.get<RelationResponse>({
+      url: '/graph/map/entity/relation',
       params: { entityName }
     })
-    // 解包得到后端返回的 JSON 对象
-    const result = res.data
+    // service 的响应拦截器已提取 data，result 即为后端返回的 JSON（包含 code, msg, data）
     console.log('接口返回原始数据：', result)
 
     if (result.code !== 0) {

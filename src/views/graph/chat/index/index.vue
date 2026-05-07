@@ -126,9 +126,7 @@ import MessageListEmpty from './components/message/MessageListEmpty.vue'
 import MessageLoading from './components/message/MessageLoading.vue'
 import MessageNewConversation from './components/message/MessageNewConversation.vue'
 import MessageFileUpload from './components/message/MessageFileUpload.vue'
-import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getGraphToken } from '@/utils/graph-auth'
 
 /** AI 聊天对话 列表 */
 defineOptions({ name: 'AiChat' })
@@ -274,9 +272,6 @@ const handleConversationCreate = async () => {
   console.log("✅ 新建对话按钮被点击了！")
   
   try {
-    const token = getGraphToken()
-    console.log("📡 当前页面拿到的 Token:", token)
-    
     console.log("📡 开始发送请求...")
     const res = await ChatConversationApi.createChatConversationMy({ title: '新对话' })
     console.log("📡 创建对话 API 完整返回:", res)
@@ -498,110 +493,63 @@ const extractEntityName = (content: string): string | null => {
   return null
 }
 
-/** 发送消息到 QA 接口 */
-const doSendMessageToQA = async (question: string, attachmentUrls: string[] = []) => {
+/** 发送消息到后端接口（核心修改：调用后端流式接口，让后端存数据库） */
+const doSendMessageToBackend = async (question: string, attachmentUrls: string[] = []) => {
+  console.log('【发送消息】开始执行，question:', question)
+  
+  if (!activeConversationId.value) {
+    ElMessage.error('请先创建对话')
+    return
+  }
+
   abortController.value = new AbortController()
   conversationInProgress.value = true
   
-  const assistantMessageId = Date.now() + 1
+  // 先清空输入框
+  prompt.value = ''
+  uploadFiles.value = []
 
   try {
-    // 1. 加入用户消息（前端显示）
-    const userMessage: ChatMessageVO = {
-      id: Date.now(),
-      conversationId: activeConversationId.value,
-      type: 'user',
-      content: question,
-      createTime: new Date(),
-      attachmentUrls: attachmentUrls,
-      userId: 0,
-      useContext: enableContext.value,
-      deleted: false,
-      reasoningContent: '',
-      segments: [],
-      webSearchPages: [],
-      relationList: []
-    } as ChatMessageVO
-    activeMessageList.value.push(userMessage)
+    // 1. 先调用后端接口获取消息列表（确保拿到最新数据）
+    await getMessageList()
 
-    // 2. 加入思考中的机器人消息
-    const tempAssistantMessage: ChatMessageVO = {
-      id: assistantMessageId,
-      conversationId: activeConversationId.value,
-      type: 'system',
-      content: '思考中...',
-      createTime: new Date(),
-      relationList: [],
-      userId: 0,
-      useContext: false,
-      deleted: false,
-      attachmentUrls: [],
-      reasoningContent: '',
-      segments: [],
-      webSearchPages: []
-    } as ChatMessageVO
-    activeMessageList.value.push(tempAssistantMessage)
+    // 2. 调用后端流式发送接口（核心：让后端处理AI并保存消息到数据库）
+    console.log('【发送消息】准备调用后端流式接口')
+    let fullAnswer = ''
+    let tempGraphJson = ''
 
+    await ChatMessageApi.sendChatMessageStream(
+      activeConversationId.value,
+      question,
+      abortController.value,
+      enableContext.value,
+      enableWebSearch.value,
+      (event) => {
+        // 流式接收内容
+        fullAnswer += event.data
+        console.log('【流式消息】收到片段:', event.data)
+      },
+      (error) => {
+        console.error('【流式消息】错误:', error)
+        ElMessage.error('消息发送失败：' + (error.message || '未知错误'))
+      },
+      () => {
+        console.log('【流式消息】接收完成，完整内容:', fullAnswer)
+      },
+      attachmentUrls
+    )
+
+    // 3. 流式结束后，重新从后端获取消息列表（确保显示数据库里的真实数据）
+    console.log('【发送消息】重新加载消息列表')
+    await getMessageList()
     await nextTick()
     await scrollToBottom()
-
-    // 3. 调用 QA 接口
-    const response = await axios.get<QAResponse>('http://localhost:8000/api/qa/', {
-      params: { question },
-      timeout: 30000,
-      signal: abortController.value.signal
-    })
-
-    console.log('QA 接口返回:', response.data)
-
-    // 4. 解析返回数据
-    let answerText = ''
-    let relationList: any[] = []
-    
-    if (response.data.code === 200 && response.data.data) {
-      if (response.data.data.answer && response.data.data.answer.length > 0) {
-        answerText = response.data.data.answer.join('\n\n')
-      } else {
-        answerText = '未找到相关答案'
-      }
-      
-      if (response.data.data.list && response.data.data.list.length > 0) {
-        const entityName = extractEntityName(question) || question
-        relationList = response.data.data.list.map((item: any) => ({
-          entity1: entityName,
-          entity2: item.entity2,
-          rel: item.rel
-        }))
-      }
-    } else {
-      answerText = response.data.msg || '请求失败，请稍后重试'
-    }
-
-    // 5. 更新机器人消息
-    const lastMessage = activeMessageList.value.find(m => m.id === assistantMessageId)
-    if (lastMessage && lastMessage.type !== 'user') {
-      lastMessage.content = answerText
-      lastMessage.relationList = relationList
-    }
-
-    await scrollToBottom()
-    
-    // 6. 保存当前对话到 localStorage 缓存
-    if (activeConversationId.value !== null) {
-      saveConversationMessages(activeConversationId.value, activeMessageList.value)
-    }
     
   } catch (err: any) {
-    console.error('发送失败：', err)
-    const lastMessage = activeMessageList.value.find(m => m.id === assistantMessageId)
-    if (lastMessage && lastMessage.type !== 'user') {
-      if (err.name === 'AbortError') {
-        lastMessage.content = '已停止生成'
-      } else {
-        lastMessage.content = `请求失败: ${err.message || '网络错误'}`
-      }
+    console.error('【发送消息】完整错误:', err)
+    if (err.name !== 'AbortError') {
+      ElMessage.error('请求失败: ' + (err.message || '网络错误'))
     }
-    ElMessage.error('请求失败，请检查 QA 服务是否启动')
   } finally {
     conversationInProgress.value = false
     abortController.value = null
@@ -620,10 +568,9 @@ const doSendMessage = async (content: string) => {
   }
 
   const attachmentUrls = [...uploadFiles.value]
-  prompt.value = ''
-  uploadFiles.value = []
-
-  await doSendMessageToQA(content, attachmentUrls)
+  
+  // 核心修改：调用后端接口，而不是直接调QA接口
+  await doSendMessageToBackend(content, attachmentUrls)
 }
 
 /** 停止生成 */

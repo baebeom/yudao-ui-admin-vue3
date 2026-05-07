@@ -1,8 +1,6 @@
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
 import graphRequest from '@/utils/graphRequest'
-import { getGraphToken } from '@/utils/graph-auth'
 
-// 聊天 VO - 严格匹配 graph_chat_message 表结构
 export interface ChatMessageVO {
   id: number
   conversationId: number
@@ -18,8 +16,6 @@ export interface ChatMessageVO {
   graph?: string
   createTime?: Date | string
   updateTime?: Date | string
-
-  // 前端扩展字段
   attachmentUrls?: string[]
   reasoningContent?: string
   segments?: any[]
@@ -31,7 +27,6 @@ export interface ChatMessageVO {
   }>
 }
 
-// QA 接口返回类型
 export interface QAResponse {
   code: number
   msg?: string
@@ -41,93 +36,58 @@ export interface QAResponse {
       entity1: string
       entity2: string
       rel: string
-      entity1_type?: string
-      entity2_type?: string
     }>
   }
 }
 
-// graph chat 聊天 API
+// 只使用系统 ACCESS_TOKEN
+const getAccessToken = () => localStorage.getItem('ACCESS_TOKEN')?.replace(/"/g, '') || ''
+
 export const ChatMessageApi = {
-  getChatMessageListByConversationId: async (conversationId: number | null) => {
+  getChatMessageListByConversationId: async (conversationId) => {
     return await graphRequest.get(`/graph/chat/message/list-by-conversation-id?conversationId=${conversationId}`)
   },
-
-  saveMessage: async (message: ChatMessageVO) => {
+  saveMessage: async (message) => {
     return await graphRequest.post('/graph/chat/message/save', message)
   },
-
-  updateMessage: async (message: ChatMessageVO) => {
+  updateMessage: async (message) => {
     return await graphRequest.put('/graph/chat/message/update', message)
   },
-
-  sendChatMessage: async (question: string): Promise<QAResponse> => {
-    try {
-      const response = await graphRequest.get('/api/qa/', {
-        params: { question },
-        timeout: 30000
-      })
-      return response.data
-    } catch (error) {
-      console.error('QA 接口请求失败:', error)
-      throw error
-    }
+  sendChatMessage: async (question) => {
+    return await graphRequest.get('/api/qa/', { params: { question } })
   },
-
   sendChatMessageStream: async (
-    conversationId: number,
-    content: string,
-    ctrl: AbortController,
-    enableContext: boolean,
-    enableWebSearch: boolean,
-    onMessage: (event: EventSourceMessage) => void,
-    onError: (error: Error) => void,
-    onClose: () => void,
-    attachmentUrls?: string[]
+    conversationId, content, ctrl, enableContext, enableWebSearch,
+    onMessage, onError, onClose, attachmentUrls = []
   ) => {
-    const token = getGraphToken()
+    const token = getAccessToken()
     const baseURL = graphRequest.defaults.baseURL || '/admin-api'
 
     return fetchEventSource(`${baseURL}/graph/chat/message/send-stream`, {
       method: 'post',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
+        'token': token
       },
-      openWhenHidden: true,
       body: JSON.stringify({
-        conversationId,
-        content,
-        useContext: enableContext,
-        useSearch: enableWebSearch,
-        attachmentUrls: attachmentUrls || []
+        conversationId, content, useContext: enableContext, useSearch: enableWebSearch, attachmentUrls
       }),
+      signal: ctrl.signal,
       onmessage: onMessage,
       onerror: onError,
-      onclose: onClose,
-      signal: ctrl.signal
+      onclose: onClose
     })
   },
-
-  deleteChatMessage: async (id: number) => {
+  deleteChatMessage: async (id) => {
     return await graphRequest.delete(`/graph/chat/message/delete?id=${id}`)
   },
-
-  deleteByConversationId: async (conversationId: number) => {
+  deleteByConversationId: async (conversationId) => {
     return await graphRequest.delete(`/graph/chat/message/delete-by-conversation-id?conversationId=${conversationId}`)
   },
-
-  getChatMessagePage: async (params: {
-    pageNum?: number
-    pageSize?: number
-    userId?: number
-    conversationId?: number
-    type?: 'user' | 'system'
-  }) => {
+  getChatMessagePage: async (params) => {
     return await graphRequest.get('/graph/chat/message/page', { params })
   },
-
-  deleteChatMessageByAdmin: async (id: number) => {
+  deleteChatMessageByAdmin: async (id) => {
     return await graphRequest.delete(`/graph/chat/message/delete-by-admin?id=${id}`)
   }
 }
