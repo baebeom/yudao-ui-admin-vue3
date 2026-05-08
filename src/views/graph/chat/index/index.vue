@@ -117,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { ChatMessageApi, ChatMessageVO, QAResponse } from '@/api/graph/chat/message'
+import { ChatMessageApi, ChatMessageVO } from '@/api/graph/chat/message'
 import { ChatConversationApi, ChatConversationVO } from '@/api/graph/chat/conversation'
 import ConversationList from './components/conversation/ConversationList.vue'
 import ConversationUpdateForm from './components/conversation/ConversationUpdateForm.vue'
@@ -493,7 +493,7 @@ const extractEntityName = (content: string): string | null => {
   return null
 }
 
-/** 发送消息到后端接口（核心修改：调用后端流式接口，让后端存数据库） */
+/** 发送消息到后端接口（核心：仅调用后端接口，不再直接调用8000的QA接口） */
 const doSendMessageToBackend = async (question: string, attachmentUrls: string[] = []) => {
   console.log('【发送消息】开始执行，question:', question)
   
@@ -516,7 +516,6 @@ const doSendMessageToBackend = async (question: string, attachmentUrls: string[]
     // 2. 调用后端流式发送接口（核心：让后端处理AI并保存消息到数据库）
     console.log('【发送消息】准备调用后端流式接口')
     let fullAnswer = ''
-    let tempGraphJson = ''
 
     await ChatMessageApi.sendChatMessageStream(
       activeConversationId.value,
@@ -524,12 +523,12 @@ const doSendMessageToBackend = async (question: string, attachmentUrls: string[]
       abortController.value,
       enableContext.value,
       enableWebSearch.value,
-      (event) => {
+      (event: any) => {
         // 流式接收内容
         fullAnswer += event.data
         console.log('【流式消息】收到片段:', event.data)
       },
-      (error) => {
+      (error: any) => {
         console.error('【流式消息】错误:', error)
         ElMessage.error('消息发送失败：' + (error.message || '未知错误'))
       },
@@ -569,7 +568,7 @@ const doSendMessage = async (content: string) => {
 
   const attachmentUrls = [...uploadFiles.value]
   
-  // 核心修改：调用后端接口，而不是直接调QA接口
+  // 调用后端接口发送消息（不再直接调用8000的QA接口）
   await doSendMessageToBackend(content, attachmentUrls)
 }
 

@@ -1,6 +1,9 @@
-import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
-import graphRequest from '@/utils/graphRequest'
+import request from '@/config/axios'
+import { fetchEventSource } from '@microsoft/fetch-event-source'
+import { getAccessToken } from '@/utils/auth'
+import { config } from '@/config/axios/config'
 
+// graph 聊天消息 VO
 export interface ChatMessageVO {
   id: number
   conversationId: number
@@ -27,67 +30,69 @@ export interface ChatMessageVO {
   }>
 }
 
-export interface QAResponse {
-  code: number
-  msg?: string
-  data?: {
-    answer?: string[]
-    list?: Array<{
-      entity1: string
-      entity2: string
-      rel: string
-    }>
-  }
-}
-
-// 只使用系统 ACCESS_TOKEN
-const getAccessToken = () => localStorage.getItem('ACCESS_TOKEN')?.replace(/"/g, '') || ''
-
+// 知识图谱 Graph Chat 聊天
 export const ChatMessageApi = {
-  getChatMessageListByConversationId: async (conversationId) => {
-    return await graphRequest.get(`/graph/chat/message/list-by-conversation-id?conversationId=${conversationId}`)
+  // 获取指定对话的消息列表
+  getChatMessageListByConversationId: async (conversationId: number | null) => {
+    return await request.get({
+      url: `/graph/chat/message/list-by-conversation-id?conversationId=${conversationId}`
+    })
   },
-  saveMessage: async (message) => {
-    return await graphRequest.post('/graph/chat/message/save', message)
-  },
-  updateMessage: async (message) => {
-    return await graphRequest.put('/graph/chat/message/update', message)
-  },
-  sendChatMessage: async (question) => {
-    return await graphRequest.get('/api/qa/', { params: { question } })
-  },
+
+  // 发送 Stream 消息 (知识图谱)
   sendChatMessageStream: async (
-    conversationId, content, ctrl, enableContext, enableWebSearch,
-    onMessage, onError, onClose, attachmentUrls = []
+    conversationId: number,
+    content: string,
+    ctrl,
+    enableContext: boolean,
+    enableWebSearch: boolean,
+    onMessage,
+    onError,
+    onClose,
+    attachmentUrls?: string[]
   ) => {
     const token = getAccessToken()
-    const baseURL = graphRequest.defaults.baseURL || '/admin-api'
-
-    return fetchEventSource(`${baseURL}/graph/chat/message/send-stream`, {
+    // ✅ 关键点：使用 config.base_url，路径改为 /graph/...
+    return fetchEventSource(`${config.base_url}/graph/chat/message/send-stream`, {
       method: 'post',
       headers: {
         'Content-Type': 'application/json',
-        'token': token
+        Authorization: `Bearer ${token}`
       },
+      openWhenHidden: true,
       body: JSON.stringify({
-        conversationId, content, useContext: enableContext, useSearch: enableWebSearch, attachmentUrls
+        conversationId,
+        content,
+        useContext: enableContext,
+        useSearch: enableWebSearch,
+        attachmentUrls: attachmentUrls || []
       }),
-      signal: ctrl.signal,
       onmessage: onMessage,
       onerror: onError,
-      onclose: onClose
+      onclose: onClose,
+      signal: ctrl.signal
     })
   },
-  deleteChatMessage: async (id) => {
-    return await graphRequest.delete(`/graph/chat/message/delete?id=${id}`)
+
+  // 删除单条消息
+  deleteChatMessage: async (id: number) => {
+    return await request.delete({ url: `/graph/chat/message/delete?id=${id}` })
   },
-  deleteByConversationId: async (conversationId) => {
-    return await graphRequest.delete(`/graph/chat/message/delete-by-conversation-id?conversationId=${conversationId}`)
+
+  // 删除指定对话的所有消息
+  deleteByConversationId: async (conversationId: number) => {
+    return await request.delete({
+      url: `/graph/chat/message/delete-by-conversation-id?conversationId=${conversationId}`
+    })
   },
-  getChatMessagePage: async (params) => {
-    return await graphRequest.get('/graph/chat/message/page', { params })
+
+  // 获得消息分页 (管理后台)
+  getChatMessagePage: async (params: any) => {
+    return await request.get({ url: '/graph/chat/message/page', params })
   },
-  deleteChatMessageByAdmin: async (id) => {
-    return await graphRequest.delete(`/graph/chat/message/delete-by-admin?id=${id}`)
+
+  // 管理员删除消息
+  deleteChatMessageByAdmin: async (id: number) => {
+    return await request.delete({ url: `/graph/chat/message/delete-by-admin?id=${id}` })
   }
 }

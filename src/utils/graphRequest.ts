@@ -5,13 +5,35 @@ const graphRequest = axios.create({
   timeout: 30000
 })
 
+// 解析 Token 的辅助函数
+const parseAccessToken = () => {
+  try {
+    const tokenStr = localStorage.getItem('ACCESS_TOKEN')
+    if (!tokenStr) return ''
+
+    console.log('🔧 [graphRequest] 原始 Token:', tokenStr)
+
+    // 解析 JSON
+    const tokenObj = JSON.parse(tokenStr)
+    if (tokenObj && tokenObj.v) {
+      // 提取 v 字段并清理所有引号和反斜杠
+      const cleanToken = tokenObj.v.replace(/["\\]/g, '')
+      console.log('🔧 [graphRequest] 解析后 Token:', cleanToken)
+      return cleanToken
+    }
+    return ''
+  } catch (e) {
+    console.error('🔧 [graphRequest] Token 解析失败:', e)
+    return ''
+  }
+}
+
 // 请求拦截器
 graphRequest.interceptors.request.use(
   (config) => {
-    // 若依 / 芋道 框架：只需要 token 头！！！
-    const token = localStorage.getItem('ACCESS_TOKEN')
+    const token = parseAccessToken()
     if (token) {
-      config.headers['token'] = token.replace(/"/g, '') // 关键！！！
+      config.headers['Authorization'] = `Bearer ${token}`
     }
     config.headers['tenant-id'] = '1'
     return config
