@@ -16,7 +16,7 @@
         :loading="isGenerating"
         @click="handleSearch"
       >
-        智能生成思维导图
+        智能生成
       </el-button>
     </div>
 

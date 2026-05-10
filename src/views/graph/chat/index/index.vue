@@ -2,6 +2,7 @@
   <el-container class="absolute flex-1 top-0 left-0 h-full w-full">
     <!-- 左侧：对话列表 -->
     <ConversationList
+      ref="conversationListRef"
       :active-id="activeConversationId?.toString() || ''"
       @on-conversation-create="handleConversationCreateSuccess"
       @on-conversation-click="handleConversationClick"
@@ -118,7 +119,7 @@
 
 <script setup lang="ts">
 import { ChatMessageApi, ChatMessageVO } from '@/api/graph/chat/message'
-import { ChatConversationApi, ChatConversationVO } from '@/api/graph/chat/conversation'
+import { ChatConversationVO } from '@/api/graph/chat/conversation'
 import ConversationList from './components/conversation/ConversationList.vue'
 import ConversationUpdateForm from './components/conversation/ConversationUpdateForm.vue'
 import MessageList from './components/message/MessageList.vue'
@@ -127,12 +128,15 @@ import MessageLoading from './components/message/MessageLoading.vue'
 import MessageNewConversation from './components/message/MessageNewConversation.vue'
 import MessageFileUpload from './components/message/MessageFileUpload.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { EventSourceMessage } from '@microsoft/fetch-event-source' // 添加导入
+import type { EventSourceMessage } from '@microsoft/fetch-event-source' 
+import service from '@/config/axios'
 
 /** AI 聊天对话 列表 */
 defineOptions({ name: 'AiChat' })
 
 const route = useRoute()
+
+const conversationListRef = ref()
 
 // 聊天对话
 const activeConversationId = ref<number | null>(null)
@@ -172,12 +176,16 @@ const removeConversationMessages = (conversationId: number) => {
 // =========== 【聊天对话】相关 ===========
 
 /** 获取对话信息 */
+/** 获取对话信息 */
 const getConversation = async (id: number | null) => {
   if (!id || typeof id !== 'number') return
   try {
-    console.log("📡 获取对话详情，ID:", id)
-    const res = await ChatConversationApi.getChatConversationMy(id)
-    console.log("📡 获取对话详情返回:", res)
+    console.log("获取对话详情，ID:", id)
+    // 改用 service.get，与 ConversationList 保持一致
+    const res = await service.get({
+      url: `/graph/chat/conversation/get-my?id=${id}`
+    })
+    console.log("获取对话详情返回:", res)
   
     const resData = res as any
     
@@ -189,7 +197,7 @@ const getConversation = async (id: number | null) => {
     }
 
     if (!conversation) {
-      console.warn("⚠️ 未获取到对话详情")
+      console.warn("未获取到对话详情")
       return
     }
     
@@ -273,30 +281,57 @@ const handleConversationCreate = async () => {
   console.log("新建对话按钮被点击了！")
   
   try {
-    console.log("📡 开始发送请求...")
-    const res = await ChatConversationApi.createChatConversationMy({ title: '新对话' })
-    console.log("📡 创建对话 API 完整返回:", res)
-
-    const resData = res as any
+    console.log("开始发送请求...")
+    const res = await service.post({
+      url: '/graph/chat/conversation/create-my',
+      data: { title: '新对话' }
+    })
+    console.log("创建对话 API 完整返回:", res)
 
     let newConversationId: number | null = null
-    if (typeof resData === 'number') {
-      newConversationId = resData
-    } else if (resData && typeof resData === 'object') {
-      if (resData.code === 0 && resData.data && typeof resData.data === 'number') {
-        newConversationId = resData.data
-      } else if (resData.data && typeof resData.data === 'number') {
-        newConversationId = resData.data
-      }
+    if (typeof res === 'number') {
+      newConversationId = res
+    } else if (res?.data && typeof res.data === 'number') {
+      newConversationId = res.data
+    } else if (res?.id && typeof res.id === 'number') {
+      newConversationId = res.id
     }
 
-    if (!newConversationId || isNaN(newConversationId)) {
-      ElMessage.error(`创建失败：返回格式异常，响应内容：${JSON.stringify(resData)}`)
+    if (!newConversationId) {
+      ElMessage.error('创建对话失败：无法获取对话ID')
       return
     }
 
     console.log("新对话 ID:", newConversationId)
-    await getConversation(newConversationId)
+    
+    // 获取对话详情
+    const conversationRes = await service.get({
+      url: `/graph/chat/conversation/get-my?id=${newConversationId}`
+    })
+    
+    let conversation = conversationRes?.data || conversationRes
+    if (conversation?.code === 0 && conversation?.data) {
+      conversation = conversation.data
+    }
+    
+    if (conversation?.id) {
+      activeConversation.value = conversation
+      activeConversationId.value = conversation.id
+    } else {
+      activeConversationId.value = newConversationId
+      await getConversation(newConversationId)
+    }
+    
+    // 刷新左侧对话列表
+    await conversationListRef.value?.getChatConversationList()
+    
+    // 清空输入框和文件
+    prompt.value = ''
+    uploadFiles.value = []
+    
+    // 重新加载消息列表
+    await getMessageList()
+    
     ElMessage.success("创建对话成功")
   } catch (error: any) {
     console.error("创建对话完整错误:", error)
@@ -629,7 +664,7 @@ const doSendMessageToBackend = async (question: string, attachmentUrls: string[]
       onClose: async () => {
         console.log('【流式消息】接收完成，重新获取消息列表')
         
-        // 🔑 关键修改：流式完成后，等待1秒后重新从后端获取完整的消息列表
+        // 关键修改：流式完成后，等待1秒后重新从后端获取完整的消息列表
         // 这样就能获取到后端保存的 graph 字段（知识图谱数据）
         setTimeout(async () => {
           console.log('开始重新获取消息列表...')

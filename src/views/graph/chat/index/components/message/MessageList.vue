@@ -247,7 +247,6 @@ const renderGraph = (container: HTMLElement, relationList: RelationItem[], messa
   // 使用 setTimeout 确保 DOM 已渲染
   setTimeout(() => {
     if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
-      console.warn('容器尺寸为0，延迟重试', messageId)
       setTimeout(() => renderGraph(container, relationList, messageId), 200)
       return
     }

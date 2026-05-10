@@ -21,8 +21,7 @@ const promptList = [
   { prompt: '崇明县适合种什么植物？' },
   { prompt: '中国的首都的气候类型是什么？' },
   { prompt: '胡萝卜汁含有哪些营养成分？' },
-  { prompt: '大豆的植物学分类是什么？' },
-  { prompt: '水稻适合什么气候种植？' }
+  { prompt: '大豆的植物学分类是什么？' }
 ] // prompt 列表
 
 const emits = defineEmits(['onPrompt'])

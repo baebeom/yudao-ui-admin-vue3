@@ -307,7 +307,10 @@ watch(activeId, async (newValue) => {
   if (newValue) activeConversationId.value = Number(newValue)
 })
 
-defineExpose({ createConversation })
+defineExpose({ 
+  createConversation,
+  getChatConversationList  
+})
 
 onMounted(async () => {
   await getChatConversationList()
