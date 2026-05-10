@@ -2,7 +2,7 @@
 const graphRoutes = {
   path: '/graph',
   name: 'Graph',
-  redirect: '/graph/chat',      // 默认进入智能问答页
+  redirect: '/graph/chat',
   component: () => import('@/layout/Layout.vue'),
   meta: {
     title: '知识图谱',
@@ -39,33 +39,24 @@ const graphRoutes = {
 }
 
 const remainingRouter = [
-  // 🔥 根路径直接重定向到智能问答页（后续由守卫判断 Token）
   {
     path: '/',
     redirect: '/graph/chat',
     meta: { hidden: true }
   },
-
-  // 主系统登录页
   {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login/Login.vue'),
     meta: { hidden: true, title: '登录', noTagsView: true }
   },
-
-  // Graph 登录页（独立布局，保留以备不时之需）
   {
     path: '/graph/login',
     name: 'GraphLogin',
     component: () => import('@/views/graph/login/index.vue'),
     meta: { hidden: true, title: '图谱登录', noTagsView: true }
   },
-
-  // Graph 主模块
   graphRoutes,
-
-  // 错误页面
   {
     path: '/404',
     name: 'NotFound',

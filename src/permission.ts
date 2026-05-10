@@ -51,7 +51,7 @@ router.beforeEach(async (to, from, next) => {
   
   // 白名单直接放行（包括 /graph/login）
   if (whiteList.includes(to.path)) {
-    console.log('✅ 白名单放行:', to.path)
+    console.log('白名单放行:', to.path)
     next()
     return
   }
@@ -68,18 +68,18 @@ router.beforeEach(async (to, from, next) => {
       // 动态路由未初始化
       if (!isPermissionInitialized) {
         try {
-          console.log('🔄 生成动态路由...')
+          console.log('生成动态路由...')
           await permissionStore.generateRoutes()
           permissionStore.getAddRouters.forEach((route) => {
             router.addRoute(route as unknown as RouteRecordRaw)
           })
           isPermissionInitialized = true
-          console.log('✅ 动态路由生成完成')
+          console.log('动态路由生成完成')
           // 重要：重新路由到目标页面
           next({ ...to, replace: true })
           return
         } catch (error) {
-          console.error('❌ 生成路由失败:', error)
+          console.error('生成路由失败:', error)
           // 清除失效 token
           localStorage.removeItem('graph_token')
           localStorage.removeItem('GRAPH_ACCESS_TOKEN')
@@ -87,12 +87,12 @@ router.beforeEach(async (to, from, next) => {
           return
         }
       }
-      console.log('✅ Graph 放行:', to.path)
+      console.log('Graph 放行:', to.path)
       next()
     } else {
       // 无 token，跳转登录页，保留 redirect 参数
-      console.log('❌ 无 token，跳转 /graph/login')
-      // 🔥 关键：保留原始目标路径作为 redirect 参数
+      console.log('无 token，跳转 /graph/login')
+      // 关键：保留原始目标路径作为 redirect 参数
       next(`/graph/login?redirect=${encodeURIComponent(to.fullPath)}`)
     }
     return

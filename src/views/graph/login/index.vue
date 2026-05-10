@@ -165,7 +165,7 @@ const handleLogin = async () => {
 
       ElMessage.success('登录成功')
       
-      // ✅ 关键修复：支持 redirect
+      // 关键修复：支持 redirect
       const redirect = route.query.redirect as string || '/graph/chat'
       router.push(redirect)
     } catch (error: any) {
@@ -197,7 +197,7 @@ const handleGuestLogin = async () => {
 
     ElMessage.success('游客登录成功')
     
-    // ✅ 关键修复：支持 redirect
+    // 关键修复：支持 redirect
     const redirect = route.query.redirect as string || '/graph/chat'
     router.push(redirect)
   } catch (error: any) {

@@ -127,6 +127,7 @@ import MessageLoading from './components/message/MessageLoading.vue'
 import MessageNewConversation from './components/message/MessageNewConversation.vue'
 import MessageFileUpload from './components/message/MessageFileUpload.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { EventSourceMessage } from '@microsoft/fetch-event-source' // 添加导入
 
 /** AI 聊天对话 列表 */
 defineOptions({ name: 'AiChat' })
@@ -269,7 +270,7 @@ const handleConversationUpdateSuccess = async () => {
 }
 
 const handleConversationCreate = async () => {
-  console.log("✅ 新建对话按钮被点击了！")
+  console.log("新建对话按钮被点击了！")
   
   try {
     console.log("📡 开始发送请求...")
@@ -294,11 +295,11 @@ const handleConversationCreate = async () => {
       return
     }
 
-    console.log("✅ 新对话 ID:", newConversationId)
+    console.log("新对话 ID:", newConversationId)
     await getConversation(newConversationId)
     ElMessage.success("创建对话成功")
   } catch (error: any) {
-    console.error("❌ 创建对话完整错误:", error)
+    console.error("创建对话完整错误:", error)
     ElMessage.error(`创建失败：${error.message || '网络错误'}`)
   }
 }
@@ -326,24 +327,80 @@ const getMessageList = async () => {
       activeMessageListLoading.value = true
     }, 60)
 
-    // 修复点2：API 返回的是 AxiosResponse，需要先取 data
     const res = await ChatMessageApi.getChatMessageListByConversationId(
       activeConversationId.value
     )
-    const messages = res.data || []
+    
+    console.log('【getMessageList】API返回:', res)
+    
+    // 兼容不同的返回格式
+    let messages: any[] = []
+    if (res?.data && Array.isArray(res.data)) {
+      messages = res.data
+    } else if (res?.list && Array.isArray(res.list)) {
+      messages = res.list
+    } else if (res?.records && Array.isArray(res.records)) {
+      messages = res.records
+    } else if (Array.isArray(res)) {
+      messages = res
+    }
+
+    console.log('解析后的消息数量:', messages.length)
+    
+    console.log('解析后的消息数量:', messages.length)
     
     // 转换后端返回的消息，将 graph 字段解析为 relationList
     const convertedMessages = messages.map((msg: any) => {
-      // 如果有 graph 字段且没有 relationList，解析它
-      if (msg.graph && !msg.relationList) {
+      console.log(`消息 ${msg.id} (${msg.type}) - graph字段:`, msg.graph)
+      
+      // 如果有 graph 字段，解析为 relationList
+      if (msg.graph) {
         try {
-          msg.relationList = JSON.parse(msg.graph)
+          let graphData = msg.graph
+          if (typeof graphData === 'string') {
+            graphData = JSON.parse(graphData)
+          }
+          
+          console.log(`消息 ${msg.id} - 解析后的graph:`, graphData)
+          
+          // 根据实际数据结构转换 relationList
+          if (graphData && Array.isArray(graphData)) {
+            msg.relationList = graphData.map((item: any) => ({
+              entity1: item.entity1 || '查询实体',
+              entity2: item.entity2 || item.target || '未知',
+              rel: item.rel || item.relation || '关联'
+            }))
+          } else if (graphData && graphData.entityRelation) {
+            const relations = graphData.entityRelation
+            if (Array.isArray(relations) && relations.length > 0) {
+              const firstRelation = relations[0]
+              if (Array.isArray(firstRelation)) {
+                msg.relationList = firstRelation.map((item: any) => ({
+                  entity1: item.entity1 || '查询实体',
+                  entity2: item.entity2?.title || item.entity2,
+                  rel: item.rel?.type || item.rel
+                }))
+              }
+            }
+          }
+          
+          console.log(`消息 ${msg.id} 解析成功，关系数量:`, msg.relationList?.length)
         } catch (e) {
+          console.error(`消息 ${msg.id} 解析 graph 失败:`, e)
           msg.relationList = []
         }
+      } else {
+        msg.relationList = msg.relationList || []
       }
+      
       return msg
     })
+    
+    console.log('转换后的消息列表:', convertedMessages.map(m => ({ 
+      id: m.id, 
+      type: m.type, 
+      relationCount: m.relationList?.length 
+    })))
     
     activeMessageList.value = convertedMessages
 
@@ -467,33 +524,7 @@ const onCompositionend = () => {
   }, 200)
 }
 
-/** 从用户问题中提取实体名称 */
-const extractEntityName = (content: string): string | null => {
-  const patterns = [
-    /^(.+?)的/,
-    /^(.+?)是/,
-    /^(.+?)介绍/,
-    /^(.+?)适合/,
-    /^(.+?)属于/,
-    /^(.+?)的?知识图谱/,
-    /^(.+?)的关系/
-  ]
-  
-  for (const pattern of patterns) {
-    const match = content.match(pattern)
-    if (match && match[1]) {
-      return match[1].trim()
-    }
-  }
-  
-  if (content.length > 0) {
-    return content.substring(0, Math.min(12, content.length))
-  }
-  
-  return null
-}
-
-/** 发送消息到后端接口（核心：仅调用后端接口，不再直接调用8000的QA接口） */
+/** 发送消息到后端接口（支持流式实时显示） */
 const doSendMessageToBackend = async (question: string, attachmentUrls: string[] = []) => {
   console.log('【发送消息】开始执行，question:', question)
   
@@ -502,52 +533,132 @@ const doSendMessageToBackend = async (question: string, attachmentUrls: string[]
     return
   }
 
+  // 取消之前的请求（如果有）
+  if (abortController.value) {
+    abortController.value.abort()
+  }
+  
+  // 创建新的 AbortController
   abortController.value = new AbortController()
   conversationInProgress.value = true
   
-  // 先清空输入框
+  // 清空输入框
   prompt.value = ''
   uploadFiles.value = []
 
+  // 临时ID用于前端显示
+  const tempUserId = Date.now()
+  const tempAiMessageId = Date.now() + 1
+
   try {
-    // 1. 先调用后端接口获取消息列表（确保拿到最新数据）
-    await getMessageList()
-
-    // 2. 调用后端流式发送接口（核心：让后端处理AI并保存消息到数据库）
-    console.log('【发送消息】准备调用后端流式接口')
-    let fullAnswer = ''
-
-    await ChatMessageApi.sendChatMessageStream(
-      activeConversationId.value,
-      question,
-      abortController.value,
-      enableContext.value,
-      enableWebSearch.value,
-      (event: any) => {
-        // 流式接收内容
-        fullAnswer += event.data
-        console.log('【流式消息】收到片段:', event.data)
-      },
-      (error: any) => {
-        console.error('【流式消息】错误:', error)
-        ElMessage.error('消息发送失败：' + (error.message || '未知错误'))
-      },
-      () => {
-        console.log('【流式消息】接收完成，完整内容:', fullAnswer)
-      },
-      attachmentUrls
-    )
-
-    // 3. 流式结束后，重新从后端获取消息列表（确保显示数据库里的真实数据）
-    console.log('【发送消息】重新加载消息列表')
-    await getMessageList()
+    // 1. 添加用户消息到列表
+    const userMessage: ChatMessageVO = {
+      id: tempUserId,
+      conversationId: activeConversationId.value,
+      userId: 0,
+      type: 'user',
+      content: question,
+      useContext: enableContext.value,
+      attachmentUrls: attachmentUrls,
+      createTime: new Date(),
+      updateTime: new Date(),
+      reasoningContent: '',
+      segments: [],
+      webSearchPages: [],
+      relationList: []
+    }
+    activeMessageList.value.push(userMessage)
+    
+    // 2. 添加AI消息占位符（空内容，逐步填充）
+    const aiMessage: ChatMessageVO = {
+      id: tempAiMessageId,
+      conversationId: activeConversationId.value,
+      userId: 0,
+      type: 'system',
+      content: '',
+      useContext: enableContext.value,
+      createTime: new Date(),
+      updateTime: new Date(),
+      reasoningContent: '',
+      segments: [],
+      webSearchPages: [],
+      relationList: []
+    }
+    activeMessageList.value.push(aiMessage)
+    
+    // 滚动到底部
     await nextTick()
     await scrollToBottom()
+
+    // 3. 调用流式接口（对象参数方式）
+    console.log('【发送消息】准备调用后端流式接口')
+    
+    await ChatMessageApi.sendChatMessageStream({
+      conversationId: activeConversationId.value,
+      content: question,
+      ctrl: abortController.value,
+      enableContext: enableContext.value,
+      enableWebSearch: enableWebSearch.value,
+      onMessage: (event: EventSourceMessage) => {
+        // 实时更新AI消息内容
+        console.log('【流式消息】收到片段:', event.data)
+        
+        // 找到正在编辑的AI消息
+        const lastMsg = activeMessageList.value.find(m => m.id === tempAiMessageId)
+        if (lastMsg && lastMsg.type === 'system') {
+          // 追加内容
+          lastMsg.content += event.data
+          // 触发响应式更新
+          activeMessageList.value = [...activeMessageList.value]
+          // 滚动到底部
+          nextTick(() => scrollToBottom())
+        }
+      },
+      onError: (error: any) => {
+        console.error('【流式消息】错误:', error)
+        
+        // 更新错误信息到界面
+        const lastMsg = activeMessageList.value.find(m => m.id === tempAiMessageId)
+        if (lastMsg && lastMsg.type === 'system') {
+          lastMsg.content = `错误: ${error.message || '未知错误，请稍后重试'}`
+          activeMessageList.value = [...activeMessageList.value]
+        }
+        
+        ElMessage.error('消息发送失败：' + (error.message || '网络错误'))
+      },
+      onClose: async () => {
+        console.log('【流式消息】接收完成，重新获取消息列表')
+        
+        // 🔑 关键修改：流式完成后，等待1秒后重新从后端获取完整的消息列表
+        // 这样就能获取到后端保存的 graph 字段（知识图谱数据）
+        setTimeout(async () => {
+          console.log('开始重新获取消息列表...')
+          await getMessageList()
+          console.log('消息列表刷新完成')
+          
+          // 滚动到底部
+          await nextTick()
+          await scrollToBottom()
+        }, 1000)
+      },
+      attachmentUrls: attachmentUrls
+    })
+    
+    console.log('【发送消息】流式调用完成')
     
   } catch (err: any) {
     console.error('【发送消息】完整错误:', err)
+    
+    // 如果不是主动中止的错误，显示错误提示
     if (err.name !== 'AbortError') {
       ElMessage.error('请求失败: ' + (err.message || '网络错误'))
+      
+      // 更新AI消息为错误状态
+      const aiMsg = activeMessageList.value.find(m => m.id === tempAiMessageId)
+      if (aiMsg && aiMsg.type === 'system') {
+        aiMsg.content = `请求失败: ${err.message || '网络错误，请检查后端服务是否启动'}`
+        activeMessageList.value = [...activeMessageList.value]
+      }
     }
   } finally {
     conversationInProgress.value = false
@@ -557,10 +668,11 @@ const doSendMessageToBackend = async (question: string, attachmentUrls: string[]
 
 /** 真正执行【发送】消息操作 */
 const doSendMessage = async (content: string) => {
-  if (content.length < 1) {
+  if (!content || content.trim().length < 1) {
     ElMessage.error('发送失败，原因：内容为空！')
     return
   }
+  
   if (activeConversationId.value == null) {
     ElMessage.error('还没创建对话，不能发送!')
     return
@@ -568,8 +680,8 @@ const doSendMessage = async (content: string) => {
 
   const attachmentUrls = [...uploadFiles.value]
   
-  // 调用后端接口发送消息（不再直接调用8000的QA接口）
-  await doSendMessageToBackend(content, attachmentUrls)
+  // 调用流式发送
+  await doSendMessageToBackend(content.trim(), attachmentUrls)
 }
 
 /** 停止生成 */
@@ -577,8 +689,8 @@ const stopGeneration = () => {
   if (abortController.value) {
     abortController.value.abort()
     ElMessage.info('已停止生成')
+    conversationInProgress.value = false
   }
-  conversationInProgress.value = false
 }
 
 /** 编辑 message：设置为 prompt，可以再次编辑 */
@@ -596,11 +708,6 @@ const scrollToBottom = async (isIgnore?: boolean) => {
   }
 }
 
-/** 回到顶部 */
-const handlerGoTop = () => {
-  messageRef.value?.handlerGoTop()
-}
-
 /** 初始化 **/
 onMounted(async () => {
   if (route.query.conversationId) {
@@ -615,5 +722,5 @@ onMounted(async () => {
   await getMessageList()
 })
 
-defineExpose({ scrollToBottom, handlerGoTop })
+defineExpose({ scrollToBottom })
 </script>

@@ -54,29 +54,29 @@ router.beforeEach(async (to, from, next) => {
   start()
   loadStart()
   
-  console.log('🔍 路由跳转:', to.path)
-  console.log('🔍 当前完整路径:', to.fullPath)
+  console.log('路由跳转:', to.path)
+  console.log('当前完整路径:', to.fullPath)
 
   const token = getAnyToken()
-  console.log('🔍 当前 Token 状态:', token ? '存在' : '不存在')
+  console.log('当前 Token 状态:', token ? '存在' : '不存在')
 
   // 1. 白名单路径直接放行
   if (whiteList.includes(to.path)) {
-    console.log('✅ 白名单放行:', to.path)
+    console.log('白名单放行:', to.path)
     next()
     return
   }
 
   // 2. 已登录用户访问登录页 → 直接跳转到智能问答页面
   if (token && to.path === '/login') {
-    console.log('🚀 已登录，从登录页跳转到 /graph/chat')
+    console.log('已登录，从登录页跳转到 /graph/chat')
     next('/graph/chat')
     return
   }
 
   // ========== Graph 模块处理 ==========
   if (to.path.startsWith('/graph')) {
-    // 🔥 Graph 模块也认可主系统 Token
+    // Graph 模块也认可主系统 Token
     const graphToken = getAnyToken()
     
     if (graphToken) {
@@ -85,27 +85,27 @@ router.beforeEach(async (to, from, next) => {
       // 动态路由未初始化
       if (!isPermissionInitialized) {
         try {
-          console.log('🔄 生成 Graph 动态路由...')
+          console.log('生成 Graph 动态路由...')
           await permissionStore.generateRoutes()
           permissionStore.getAddRouters.forEach((route) => {
             router.addRoute(route as unknown as RouteRecordRaw)
           })
           isPermissionInitialized = true
-          console.log('✅ Graph 动态路由生成完成')
+          console.log('Graph 动态路由生成完成')
           next({ ...to, replace: true })
           return
         } catch (error) {
-          console.error('❌ 生成路由失败:', error)
+          console.error('生成路由失败:', error)
           localStorage.removeItem('graph_token')
           localStorage.removeItem('GRAPH_ACCESS_TOKEN')
           next('/graph/login')
           return
         }
       }
-      console.log('✅ Graph 放行:', to.path)
+      console.log('Graph 放行:', to.path)
       next()
     } else {
-      console.log('❌ 无有效 Token，跳转 /graph/login')
+      console.log('无有效 Token，跳转 /graph/login')
       next(`/graph/login?redirect=${encodeURIComponent(to.fullPath)}`)
     }
     return

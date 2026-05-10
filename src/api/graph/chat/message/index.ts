@@ -1,5 +1,5 @@
 import request from '@/config/axios'
-import { fetchEventSource } from '@microsoft/fetch-event-source'
+import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
 import { getAccessToken } from '@/utils/auth'
 import { config } from '@/config/axios/config'
 
@@ -30,47 +30,95 @@ export interface ChatMessageVO {
   }>
 }
 
+// 流式发送消息的参数接口
+export interface SendChatMessageStreamParams {
+  conversationId: number
+  content: string
+  ctrl: AbortController
+  enableContext: boolean
+  enableWebSearch: boolean
+  onMessage: (event: EventSourceMessage) => void
+  onError: (err: any) => void
+  onClose: () => void
+  attachmentUrls?: string[]
+}
+
 // 知识图谱 Graph Chat 聊天
 export const ChatMessageApi = {
-  // 获取指定对话的消息列表
+  // 获取指定对话的消息列表 - 使用原生 fetch 确保认证正确
   getChatMessageListByConversationId: async (conversationId: number | null) => {
-    return await request.get({
-      url: `/graph/chat/message/list-by-conversation-id?conversationId=${conversationId}`
-    })
-  },
-
-  // 发送 Stream 消息 (知识图谱)
-  sendChatMessageStream: async (
-    conversationId: number,
-    content: string,
-    ctrl,
-    enableContext: boolean,
-    enableWebSearch: boolean,
-    onMessage,
-    onError,
-    onClose,
-    attachmentUrls?: string[]
-  ) => {
     const token = getAccessToken()
-    // ✅ 关键点：使用 config.base_url，路径改为 /graph/...
-    return fetchEventSource(`${config.base_url}/graph/chat/message/send-stream`, {
-      method: 'post',
+    const response = await fetch(`${config.base_url}/graph/chat/message/list-by-conversation-id?conversationId=${conversationId}`, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
+        'Authorization': `Bearer ${token}`
+      },
+      credentials: 'include'
+    })
+    const result = await response.json()
+    console.log('【getChatMessageListByConversationId】返回结果:', result)
+    return result
+  },
+
+  // 发送 Stream 消息 (知识图谱) - 对象参数版本
+  sendChatMessageStream: async (params: SendChatMessageStreamParams) => {
+    const token = getAccessToken()
+    
+    // 参数校验
+    if (!params.ctrl) {
+      console.error('参数错误: ctrl 不能为空', params)
+      throw new Error('AbortController 不能为空')
+    }
+    
+    if (!params.ctrl.signal) {
+      console.error('参数错误: ctrl.signal 不存在', params.ctrl)
+      throw new Error('AbortController.signal 不存在')
+    }
+    
+    console.log('【sendChatMessageStream】调用参数:', {
+      conversationId: params.conversationId,
+      content: params.content,
+      enableContext: params.enableContext,
+      enableWebSearch: params.enableWebSearch,
+      attachmentUrls: params.attachmentUrls,
+      hasSignal: !!params.ctrl.signal
+    })
+    
+    return fetchEventSource(`${config.base_url}/graph/chat/message/send-stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       openWhenHidden: true,
       body: JSON.stringify({
-        conversationId,
-        content,
-        useContext: enableContext,
-        useSearch: enableWebSearch,
-        attachmentUrls: attachmentUrls || []
+        conversationId: params.conversationId,
+        content: params.content,
+        useContext: params.enableContext,
+        useSearch: params.enableWebSearch,
+        attachmentUrls: params.attachmentUrls || []
       }),
-      onmessage: onMessage,
-      onerror: onError,
-      onclose: onClose,
-      signal: ctrl.signal
+      onmessage: (event: EventSourceMessage) => {
+        console.log('【fetchEventSource】收到原始消息:', event)
+        if (params.onMessage) {
+          params.onMessage(event)
+        }
+      },
+      onerror: (err: any) => {
+        console.error('【fetchEventSource】连接错误:', err)
+        if (params.onError) {
+          params.onError(err)
+        }
+        return 3000
+      },
+      onclose: () => {
+        console.log('【fetchEventSource】连接关闭')
+        if (params.onClose) {
+          params.onClose()
+        }
+      },
+      signal: params.ctrl.signal
     })
   },
 

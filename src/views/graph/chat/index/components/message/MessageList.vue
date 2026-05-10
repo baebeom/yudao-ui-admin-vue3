@@ -25,7 +25,7 @@
             <MessageKnowledge v-if="item.segments" :segments="item.segments" />
             <MessageWebSearch v-if="item.webSearchPages" :web-search-pages="item.webSearchPages" />
             
-            <!-- 知识图谱区域 -->
+            <!-- 知识图谱区域 - 参考 Right.vue 的实现 -->
             <div v-if="item.relationList && item.relationList.length > 0" class="mt-10px">
               <div 
                 class="flex items-center justify-between cursor-pointer p-8px rounded-8px bg-gradient-to-r from-green-50 to-teal-50 border border-gray-200/60 hover:from-green-100 hover:to-teal-100 transition-all duration-200"
@@ -47,16 +47,16 @@
                 </el-icon>
               </div>
               
-              <!-- 知识图谱内容 -->
+              <!-- 知识图谱内容 - 参考 Right.vue，使用 v-show 让容器始终存在 -->
               <div
                 v-show="graphVisibleMap[item.id]"
                 class="mt-8px p-8px bg-white/70 backdrop-blur-sm border border-gray-200/60 rounded-8px shadow-sm"
               >
-                <div :ref="(el) => setGraphContainer(el, item.id)" class="graph-container" style="height: 400px; width: 100%; min-height: 400px;"></div>
+                <div :ref="(el) => setGraphContainer(el, item.id)" class="graph-container" style="height: 400px; width: 100%;"></div>
               </div>
             </div>
           </div>
-          <!-- AI 回答的按钮组（复制和删除） -->
+          <!-- AI 回答的按钮组 -->
           <div class="flex flex-row mt-8px">
             <el-button
               class="flex bg-transparent items-center hover:cursor-pointer hover:bg-[var(--el-fill-color-lighter)]"
@@ -78,56 +78,56 @@
       </div>
       
       <!-- 靠右 message：user 类型 -->
-      <div class="flex flex-row-reverse justify-start mt-50px" v-if="item.type === 'user'">
-        <div class="avatar">
-          <el-avatar :src="userAvatar" />
-        </div>
-        <div class="flex flex-col text-left mx-15px">
-          <div>
-            <el-text class="text-left leading-30px">{{ formatDate(item.createTime || new Date()) }}</el-text>
-          </div>
-          <!-- 附件显示行 -->
-          <div
-            v-if="item.attachmentUrls && item.attachmentUrls.length > 0"
-            class="flex flex-row-reverse mb-8px"
-          >
-            <MessageFiles :attachment-urls="item.attachmentUrls" />
-          </div>
-          <!-- 文本内容行 -->
-          <div class="flex flex-row-reverse">
-            <div
-              v-if="item.content && item.content.trim()"
-              class="text-[0.95rem] text-[var(--el-color-white)] inline bg-[var(--el-color-primary)] shadow-[0_0_0_1px_var(--el-color-primary)] rounded-10px p-10px w-auto break-words whitespace-pre-wrap"
-            >
-              {{ item.content }}
-            </div>
-          </div>
-          <!-- 用户消息的按钮组（复制、删除、编辑） -->
-          <div class="flex flex-row-reverse mt-8px">
-            <el-button
-              class="flex bg-transparent items-center hover:cursor-pointer hover:bg-[var(--el-fill-color-lighter)]"
-              link
-              @click="copyContent(item.content)"
-            >
-              <img class="h-20px" src="@/assets/ai/copy.svg" />
-            </el-button>
-            <el-button
-              class="flex bg-transparent items-center hover:cursor-pointer hover:bg-[var(--el-fill-color-lighter)]"
-              link
-              @click="onDelete(item.id)"
-            >
-              <img class="h-17px mr-12px" src="@/assets/ai/delete.svg" />
-            </el-button>
-            <el-button
-              class="flex bg-transparent items-center hover:cursor-pointer hover:bg-[var(--el-fill-color-lighter)]"
-              link
-              @click="onEdit(item)"
-            >
-              <el-icon size="17"><Edit /></el-icon>
-            </el-button>
-          </div>
-        </div>
+<div class="flex flex-row-reverse justify-start mt-50px" v-if="item.type === 'user'">
+  <div class="avatar">
+    <el-avatar :src="userAvatar" />
+  </div>
+  <div class="flex flex-col text-left mx-15px">
+    <div>
+      <el-text class="text-left leading-30px">{{ formatDate(item.createTime || new Date()) }}</el-text>
+    </div>
+    <!-- 附件显示行 -->
+    <div
+      v-if="item.attachmentUrls && item.attachmentUrls.length > 0"
+      class="flex flex-row-reverse mb-8px"
+    >
+      <MessageFiles :attachment-urls="item.attachmentUrls" />
+    </div>
+    <!-- 文本内容行 -->
+    <div class="flex flex-row-reverse">
+      <div
+        v-if="item.content && item.content.trim()"
+        class="text-[0.95rem] text-[var(--el-color-white)] inline bg-[var(--el-color-primary)] shadow-[0_0_0_1px_var(--el-color-primary)] rounded-10px p-10px w-auto break-words whitespace-pre-wrap"
+      >
+        {{ item.content }}
       </div>
+    </div>
+    <!-- 用户消息的按钮组 -->
+    <div class="flex flex-row-reverse mt-8px">
+      <el-button
+        class="flex bg-transparent items-center hover:cursor-pointer hover:bg-[var(--el-fill-color-lighter)]"
+        link
+        @click="copyContent(item.content)"
+      >
+        <img class="h-20px" src="@/assets/ai/copy.svg" />
+      </el-button>
+      <el-button
+        class="flex bg-transparent items-center hover:cursor-pointer hover:bg-[var(--el-fill-color-lighter)]"
+        link
+        @click="onDelete(item.id)"
+      >
+        <img class="h-17px mr-12px" src="@/assets/ai/delete.svg" />
+      </el-button>
+      <el-button
+        class="flex bg-transparent items-center hover:cursor-pointer hover:bg-[var(--el-fill-color-lighter)]"
+        link
+        @click="onEdit(item)"
+      >
+        <el-icon size="17"><Edit /></el-icon>
+      </el-button>
+    </div>
+  </div>
+</div>
     </div>
   </div>
   <!-- 回到底部 -->
@@ -152,8 +152,9 @@ import { useUserStore } from '@/store/modules/user'
 import * as echarts from 'echarts'
 import userAvatarDefaultImg from '@/assets/imgs/avatar.gif'
 import roleAvatarDefaultImg from '@/assets/ai/gpt.svg'
-
 import { ElMessage } from 'element-plus'
+
+
 const message = ElMessage
 const { copy } = useClipboard({ legacy: true })
 const userStore = useUserStore()
@@ -183,19 +184,28 @@ const props = defineProps({
 const { list } = toRefs(props)
 const emits = defineEmits(['onDeleteSuccess', 'onEdit'])
 
-// 构建图谱数据
-const buildGraphData = (relationList: any[]) => {
+// 关系数据类型定义
+interface RelationItem {
+  entity1: string
+  entity2: string
+  rel: string
+}
+
+// 构建图谱数据 - 参考 Right.vue
+const buildGraphData = (relationList: RelationItem[]) => {
   const nodes: any[] = []
   const links: any[] = []
   const nodeSet = new Set()
   
   for (const item of relationList) {
+    if (!item.entity1 || !item.entity2) continue
+    
     if (!nodeSet.has(item.entity1)) {
       nodeSet.add(item.entity1)
       nodes.push({
         id: item.entity1,
         name: item.entity1,
-        symbolSize: Math.min(60, Math.max(40, item.entity1.length * 2.5))
+        symbolSize: Math.min(70, Math.max(45, item.entity1.length * 3))
       })
     }
     
@@ -204,7 +214,7 @@ const buildGraphData = (relationList: any[]) => {
       nodes.push({
         id: item.entity2,
         name: item.entity2,
-        symbolSize: Math.min(60, Math.max(40, item.entity2.length * 2.5))
+        symbolSize: Math.min(70, Math.max(45, item.entity2.length * 3))
       })
     }
     
@@ -218,30 +228,36 @@ const buildGraphData = (relationList: any[]) => {
   return { nodes, links }
 }
 
-// 初始化知识图谱
-const initGraph = (container: HTMLElement, relationList: any[], messageId: number) => {
-  if (!container || !relationList || relationList.length === 0) return
+// 渲染知识图谱 - 参考 Right.vue 的 renderGraph 函数
+const renderGraph = (container: HTMLElement, relationList: RelationItem[], messageId: number) => {
+  if (!container || !relationList || relationList.length === 0) {
+    console.warn('renderGraph: 容器或关系数据为空', messageId)
+    return
+  }
+
+  // 清空容器内容
+  container.innerHTML = ''
   
-  const init = () => {
-    const width = container.clientWidth
-    const height = container.clientHeight
-    
-    if (width === 0 || height === 0) {
-      setTimeout(init, 100)
+  // 销毁旧实例
+  if (chartInstances.value.get(messageId)) {
+    chartInstances.value.get(messageId).dispose()
+    chartInstances.value.delete(messageId)
+  }
+
+  // 使用 setTimeout 确保 DOM 已渲染
+  setTimeout(() => {
+    if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
+      console.warn('容器尺寸为0，延迟重试', messageId)
+      setTimeout(() => renderGraph(container, relationList, messageId), 200)
       return
     }
-    
+
     const { nodes, links } = buildGraphData(relationList)
     if (nodes.length === 0) return
-    
-    if (chartInstances.value.get(messageId)) {
-      chartInstances.value.get(messageId).dispose()
-    }
-    
+
     const chart = echarts.init(container)
     
     const option = {
-      title: { show: false },
       tooltip: {},
       series: [{
         type: 'graph',
@@ -259,10 +275,12 @@ const initGraph = (container: HTMLElement, relationList: any[], messageId: numbe
         label: {
           show: true,
           position: 'inside',
-          fontSize: 12
+          fontSize: 14
         },
-        symbolSize: 50,
-        emphasis: { focus: 'adjacency' },
+        symbolSize: 60,
+        emphasis: {
+          focus: 'adjacency'
+        },
         lineStyle: {
           color: 'source',
           curveness: 0.3,
@@ -279,35 +297,52 @@ const initGraph = (container: HTMLElement, relationList: any[], messageId: numbe
     
     chart.setOption(option)
     chartInstances.value.set(messageId, chart)
-    setTimeout(() => chart.resize(), 50)
-  }
-  
-  init()
+    console.log('图谱渲染成功', messageId, '节点数:', nodes.length)
+  }, 100)
 }
 
-// 设置图表容器
-const setGraphContainer = async (el: any, messageId: number) => {
-  if (!el) return
+// 设置图表容器 - 参考 Right.vue 的方式
+const setGraphContainer = (el: any, messageId: number) => {
+  if (!el || !(el instanceof HTMLElement)) {
+    return
+  }
   
-  await nextTick()
-  await new Promise(resolve => requestAnimationFrame(resolve))
+  // 如果图表实例已存在，不重复初始化
+  if (chartInstances.value.get(messageId)) {
+    return
+  }
   
-  if (!chartInstances.value.get(messageId)) {
-    const message = props.list.find(m => m.id === messageId)
-    if (message && message.relationList && message.relationList.length > 0) {
-      initGraph(el, message.relationList, messageId)
-    }
+  const messageItem = props.list.find(m => m.id === messageId)
+  if (messageItem && messageItem.relationList && messageItem.relationList.length > 0) {
+    renderGraph(el, messageItem.relationList as RelationItem[], messageId)
   }
 }
 
 // 切换图谱显示/隐藏
 const toggleGraphVisibility = async (messageId: number) => {
-  graphVisibleMap.value[messageId] = !graphVisibleMap.value[messageId]
-  if (graphVisibleMap.value[messageId]) {
+  const wasVisible = graphVisibleMap.value[messageId]
+  graphVisibleMap.value[messageId] = !wasVisible
+  
+  if (!wasVisible) {
     await nextTick()
+    
+    // 查找容器并渲染
+    const containers = document.querySelectorAll('.graph-container')
+    for (let i = 0; i < containers.length; i++) {
+      const container = containers[i] as HTMLElement
+      if (!chartInstances.value.get(messageId)) {
+        const messageItem = props.list.find(m => m.id === messageId)
+        if (messageItem && messageItem.relationList && messageItem.relationList.length > 0) {
+          renderGraph(container, messageItem.relationList as RelationItem[], messageId)
+        }
+        break
+      }
+    }
+    
+    // 如果图表已存在，触发 resize
     const chart = chartInstances.value.get(messageId)
     if (chart) {
-      chart.resize()
+      setTimeout(() => chart.resize(), 100)
     }
   }
 }
@@ -316,8 +351,23 @@ const toggleGraphVisibility = async (messageId: number) => {
 watch(() => props.list, (newList) => {
   if (newList && newList.length > 0) {
     const lastMessage = newList[newList.length - 1]
-    if (lastMessage && lastMessage.type !== 'user' && lastMessage.relationList && lastMessage.relationList.length > 0) {
+    if (lastMessage && 
+        lastMessage.type !== 'user' && 
+        lastMessage.relationList && 
+        lastMessage.relationList.length > 0) {
+      // 自动展开图谱
       graphVisibleMap.value[lastMessage.id] = true
+      
+      // 等待 DOM 渲染后渲染图表
+      setTimeout(() => {
+        const containers = document.querySelectorAll('.graph-container')
+        if (containers.length > 0) {
+          const lastContainer = containers[containers.length - 1] as HTMLElement
+          if (lastContainer && !chartInstances.value.get(lastMessage.id)) {
+            renderGraph(lastContainer, lastMessage.relationList as RelationItem[], lastMessage.id)
+          }
+        }
+      }, 200)
     }
   }
 }, { deep: true, immediate: true })
@@ -393,16 +443,13 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleWindowResize)
 })
 
-// defineExpose 放在最后，不要在 async 函数内部
 defineExpose({ scrollToBottom, handlerGoTop })
 </script>
 
 <style scoped>
 .graph-container {
-  min-height: 350px;
-  min-width: 100%;
-  border-radius: 8px;
+  min-height: 400px;
+  width: 100%;
   background: #fafafa;
-  width: 100% !important;
 }
 </style>
