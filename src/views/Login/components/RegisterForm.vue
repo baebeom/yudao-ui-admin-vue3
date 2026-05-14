@@ -15,18 +15,7 @@
           <LoginFormTitle class="w-full" />
         </el-form-item>
       </el-col>
-      <el-col :span="24" class="px-10px">
-        <el-form-item v-if="registerData.tenantEnable === 'true'" prop="tenantName">
-          <el-input
-            v-model="registerData.registerForm.tenantName"
-            :placeholder="t('login.tenantname')"
-            :prefix-icon="iconHouse"
-            link
-            type="primary"
-            size="large"
-          />
-        </el-form-item>
-      </el-col>
+
       <el-col :span="24" class="px-10px">
         <el-form-item prop="username">
           <el-input
@@ -37,6 +26,7 @@
           />
         </el-form-item>
       </el-col>
+
       <el-col :span="24" class="px-10px">
         <el-form-item prop="nickname">
           <el-input
@@ -47,6 +37,7 @@
           />
         </el-form-item>
       </el-col>
+
       <el-col :span="24" class="px-10px">
         <el-form-item prop="password">
           <el-input
@@ -60,6 +51,7 @@
           />
         </el-form-item>
       </el-col>
+
       <el-col :span="24" class="px-10px">
         <el-form-item prop="confirmPassword">
           <el-input
@@ -73,6 +65,29 @@
           />
         </el-form-item>
       </el-col>
+
+      <el-col :span="24" class="px-10px">
+        <el-form-item prop="mobile">
+          <el-input
+            v-model="registerData.registerForm.mobile"
+            placeholder="手机号码"
+            size="large"
+            :prefix-icon="iconCellphone"
+          />
+        </el-form-item>
+      </el-col>
+
+      <el-col :span="24" class="px-10px">
+        <el-form-item prop="email">
+          <el-input
+            v-model="registerData.registerForm.email"
+            placeholder="电子邮箱"
+            size="large"
+            :prefix-icon="iconEmail"
+          />
+        </el-form-item>
+      </el-col>
+
       <el-col :span="24" class="px-10px">
         <el-form-item>
           <XButton
@@ -80,51 +95,42 @@
             :title="t('login.register')"
             class="w-full"
             type="primary"
-            @click="getCode()"
+            @click="handleRegister"
           />
         </el-form-item>
       </el-col>
-      <Verify
-        v-if="registerData.captchaEnable === 'true'"
-        ref="verify"
-        :captchaType="captchaType"
-        :imgSize="{ width: '400px', height: '200px' }"
-        mode="pop"
-        @success="handleRegister"
-      />
     </el-row>
     <XButton :title="t('login.hasUser')" class="w-full" @click="handleBackLogin()" />
   </el-form>
 </template>
+
 <script lang="ts" setup>
 import { ElLoading } from 'element-plus'
+import type { FormRules } from 'element-plus'
 import LoginFormTitle from './LoginFormTitle.vue'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import { useIcon } from '@/hooks/web/useIcon'
 import * as authUtil from '@/utils/auth'
-import { usePermissionStore } from '@/store/modules/permission'
 import * as LoginApi from '@/api/login'
 import { LoginStateEnum, useLoginState, useFormValid } from './useLogin'
 
 defineOptions({ name: 'RegisterForm' })
 
 const { t } = useI18n()
-const iconHouse = useIcon({ icon: 'ep:house' })
 const iconAvatar = useIcon({ icon: 'ep:avatar' })
 const iconLock = useIcon({ icon: 'ep:lock' })
+const iconCellphone = useIcon({ icon: 'ep:cellphone' })
+const iconEmail = useIcon({ icon: 'ep:message' })
 const formLogin = ref()
-const {validForm} = useFormValid(formLogin)
+const { validForm } = useFormValid(formLogin)
 const { handleBackLogin, getLoginState } = useLoginState()
 const { currentRoute, push } = useRouter()
-const permissionStore = usePermissionStore()
 const redirect = ref<string>('')
 const loginLoading = ref(false)
-const verify = ref()
-const captchaType = ref('blockPuzzle') // blockPuzzle 滑块 clickWord 点击文字 pictureWord 文字验证码
 
 const getShow = computed(() => unref(getLoginState) === LoginStateEnum.REGISTER)
 
-const equalToPassword = (_rule, value, callback) => {
+const equalToPassword = (_rule: any, value: string, callback: (error?: Error) => void) => {
   if (registerData.registerForm.password !== value) {
     callback(new Error('两次输入的密码不一致'))
   } else {
@@ -132,11 +138,7 @@ const equalToPassword = (_rule, value, callback) => {
   }
 }
 
-const registerRules = {
-  tenantName: [
-    { required: true, trigger: 'blur', message: '请输入您所属的租户' },
-    { min: 2, max: 20, message: '租户账号长度必须介于 2 和 20 之间', trigger: 'blur' }
-  ],
+const registerRules: FormRules = {
   username: [
     { required: true, trigger: 'blur', message: '请输入您的账号' },
     { min: 4, max: 30, message: '用户账号长度必须介于 4 和 30 之间', trigger: 'blur' }
@@ -153,6 +155,13 @@ const registerRules = {
   confirmPassword: [
     { required: true, trigger: 'blur', message: '请再次输入您的密码' },
     { required: true, validator: equalToPassword, trigger: 'blur' }
+  ],
+  mobile: [
+    { required: true, trigger: 'blur', message: '请输入手机号码' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
+  ],
+  email: [
+    { required: false, trigger: 'blur', message: '请输入电子邮箱' }
   ]
 }
 
@@ -167,22 +176,29 @@ const registerData = reactive({
     username: '',
     password: '',
     confirmPassword: '',
+    mobile: '',
+    email: '',
     captchaVerification: ''
   }
 })
 
-const loading = ref() // ElLoading.service 返回的实例
+const loading = ref()
+
+// 获取租户 ID
+const getTenantId = async () => {
+  if (registerData.tenantEnable === 'true') {
+    const res = await LoginApi.getTenantIdByName(registerData.registerForm.tenantName)
+    authUtil.setTenantId(res)
+  }
+}
+
 // 提交注册
-const handleRegister = async (params: any) => {
-  loading.value = true
+const handleRegister = async () => {
+  loginLoading.value = true
   try {
-    if (registerData.tenantEnable) {
+    if (registerData.tenantEnable === 'true') {
       await getTenantId()
       registerData.registerForm.tenantId = authUtil.getTenantId()
-    }
-
-    if (registerData.captchaEnable) {
-      registerData.registerForm.captchaVerification = params.captchaVerification
     }
 
     const data = await validForm()
@@ -201,40 +217,31 @@ const handleRegister = async (params: any) => {
     })
 
     authUtil.removeLoginForm()
-
     authUtil.setToken(res)
-    if (!redirect.value) {
-      redirect.value = '/'
+    
+    // ✅ 注册成功后获取用户信息（包含手机号、邮箱）
+    try {
+      const permissionInfo = await LoginApi.getInfo()
+      const roles = permissionInfo?.roles || ['common']
+      localStorage.setItem('userRoles', JSON.stringify(roles))
+      
+      // ✅ 存储完整的用户信息
+      if (permissionInfo?.user) {
+        const userInfo = permissionInfo.user
+        localStorage.setItem('userInfo', JSON.stringify(userInfo))
+        console.log('用户信息已存储:', userInfo)
+      }
+    } catch (error) {
+      console.error('获取用户信息失败', error)
     }
-    // 判断是否为SSO登录
-    if (redirect.value.indexOf('sso') !== -1) {
-      window.location.href = window.location.href.replace('/login?redirect=', '')
-    } else {
-      push({ path: redirect.value || permissionStore.addRouters[0].path })
-    }
+    
+    localStorage.setItem('loginType', 'user')
+    
+    await push({ path: '/home' })
+    
   } finally {
     loginLoading.value = false
     loading.value.close()
-  }
-}
-
-// 获取验证码
-const getCode = async () => {
-  // 情况一，未开启：则直接注册
-  if (registerData.captchaEnable === 'false') {
-    await handleRegister({})
-  } else {
-    // 情况二，已开启：则展示验证码；只有完成验证码的情况，才进行注册
-    // 弹出验证码
-    verify.value.show()
-  }
-}
-
-// 获取租户 ID
-const getTenantId = async () => {
-  if (registerData.tenantEnable === 'true') {
-    const res = await LoginApi.getTenantIdByName(registerData.registerForm.tenantName)
-    authUtil.setTenantId(res)
   }
 }
 
@@ -255,12 +262,10 @@ watch(
   (route: RouteLocationNormalizedLoaded) => {
     redirect.value = route?.query?.redirect as string
   },
-  {
-    immediate: true
-  }
+  { immediate: true }
 )
+
 onMounted(() => {
-  // getCookie()
   getTenantByWebsite()
 })
 </script>
@@ -269,20 +274,6 @@ onMounted(() => {
 :deep(.anticon) {
   &:hover {
     color: var(--el-color-primary) !important;
-  }
-}
-
-.login-code {
-  float: right;
-  width: 100%;
-  height: 38px;
-
-  img {
-    width: 100%;
-    height: auto;
-    max-width: 100px;
-    vertical-align: middle;
-    cursor: pointer;
   }
 }
 </style>

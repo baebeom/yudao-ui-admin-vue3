@@ -263,28 +263,25 @@ const getTenantByWebsite = async () => {
 
 const loading = ref()
 
-// 🔥 核心修复：登录逻辑（不篡改后端权限，仅存储身份用于菜单）
+// 登录
 const handleLogin = async (params: any) => {
   loginLoading.value = true
   try {
     await getTenantId()
     const data = await validForm()
-    if (!data) {
-      return
-    }
+    if (!data) return
+    
     const loginDataLoginForm = { ...loginData.loginForm }
     loginDataLoginForm.captchaVerification = params.captchaVerification
     const res = await LoginApi.login(loginDataLoginForm)
-    if (!res) {
-      return
-    }
+    if (!res) return
+    
     loading.value = ElLoading.service({
       lock: true,
       text: '正在加载系统中...',
       background: 'rgba(0, 0, 0, 0.7)'
     })
 
-    // 记住密码
     if (loginDataLoginForm.rememberMe) {
       authUtil.setLoginForm(loginDataLoginForm)
     } else {
@@ -292,19 +289,37 @@ const handleLogin = async (params: any) => {
     }
     authUtil.setToken(res)
 
-    // 保存后端真实角色 + 登录选择的身份（关键！不破坏权限）
+    // 关键：获取并存储用户完整信息
     try {
       const permissionInfo = await LoginApi.getInfo()
+      console.log('获取到的用户信息:', permissionInfo)
+      
+      // 存储角色
       const roles = permissionInfo?.roles || ['common']
       localStorage.setItem('userRoles', JSON.stringify(roles))
+      
+      // 存储用户信息
+      if (permissionInfo?.user) {
+        const userInfo = {
+          id: permissionInfo.user.id,
+          username: permissionInfo.user.username,
+          nickname: permissionInfo.user.nickname,
+          avatar: permissionInfo.user.avatar || '',
+          mobile: permissionInfo.user.mobile || '',
+          email: permissionInfo.user.email || '',
+          createTime: permissionInfo.user.createTime
+        }
+        localStorage.setItem('userInfo', JSON.stringify(userInfo))
+        console.log('用户信息已存储:', userInfo)
+      }
     } catch (error) {
-      console.error('获取用户角色失败', error)
-      localStorage.setItem('userRoles', JSON.stringify(['common']))
+      console.error('获取用户信息失败', error)
     }
-    // 仅存储登录选择的身份，用于前端菜单过滤
+    
+    // 存储登录身份
     localStorage.setItem('loginType', loginRole.value)
 
-    // 跳转对应页面
+    // 跳转
     const targetPath = REDIRECT_PATHS[loginRole.value]
     await push({ path: targetPath })
 

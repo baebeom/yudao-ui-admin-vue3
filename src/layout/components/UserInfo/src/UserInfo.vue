@@ -1,7 +1,6 @@
 <script lang="ts" setup>
+import { computed } from 'vue'
 import { ElMessageBox } from 'element-plus'
-
-import avatarImg from '@/assets/imgs/avatar.gif'
 import { useDesign } from '@/hooks/web/useDesign'
 import { useTagsViewStore } from '@/store/modules/tagsView'
 import { useUserStore } from '@/store/modules/user'
@@ -23,8 +22,28 @@ const { getPrefixCls } = useDesign()
 
 const prefixCls = getPrefixCls('user-info')
 
-const avatar = computed(() => userStore.user.avatar || avatarImg)
-const userName = computed(() => userStore.user.nickname ?? 'Admin')
+const userName = computed(() => {
+  return userStore.getUser?.nickname || '用户'
+})
+
+// 用户昵称
+const userNickname = computed(() => {
+  return userStore.getUser?.nickname || '用户'
+})
+
+// 头像 URL
+const avatarUrl = computed(() => {
+
+  // 用户上传头像
+  const userAvatar = userStore.getUser?.avatar
+  if (userAvatar && userAvatar !== '') {
+    return userAvatar
+  }
+
+  // 默认头像
+  const name = userNickname.value || 'user'
+  return `https://api.dicebear.com/9.x/pixel-art/svg?seed=${name}&backgroundType=gradientLinear&backgroundColor=b6e3f4&radius=50`
+})
 
 // 锁定屏幕
 const lockStore = useLockStore()
@@ -46,18 +65,16 @@ const loginOut = async () => {
     replace('/login?redirect=/index')
   } catch {}
 }
+
 const toProfile = async () => {
-  push('/user/profile')
-}
-const toDocument = () => {
-  window.open('https://doc.iocoder.cn/')
+  push('/profile/index')
 }
 </script>
 
 <template>
   <ElDropdown class="custom-hover" :class="prefixCls" trigger="click">
     <div class="flex items-center">
-      <ElAvatar :src="avatar" alt="" class="w-[calc(var(--logo-height)-25px)] rounded-[50%]" />
+      <el-avatar :size="35" :src="avatarUrl" class="rounded-[50%]" />
       <span class="pl-[5px] text-14px text-[var(--top-header-text-color)] <lg:hidden">
         {{ userName }}
       </span>
@@ -67,10 +84,6 @@ const toDocument = () => {
         <ElDropdownItem>
           <Icon icon="ep:tools" />
           <div @click="toProfile">{{ t('common.profile') }}</div>
-        </ElDropdownItem>
-        <ElDropdownItem>
-          <Icon icon="ep:menu" />
-          <div @click="toDocument">{{ t('common.document') }}</div>
         </ElDropdownItem>
         <ElDropdownItem divided>
           <Icon icon="ep:lock" />
@@ -92,22 +105,3 @@ const toDocument = () => {
     </transition>
   </teleport>
 </template>
-
-<style scoped lang="scss">
-.fade-bottom-enter-active,
-.fade-bottom-leave-active {
-  transition:
-    opacity 0.25s,
-    transform 0.3s;
-}
-
-.fade-bottom-enter-from {
-  opacity: 0;
-  transform: translateY(-10%);
-}
-
-.fade-bottom-leave-to {
-  opacity: 0;
-  transform: translateY(10%);
-}
-</style>

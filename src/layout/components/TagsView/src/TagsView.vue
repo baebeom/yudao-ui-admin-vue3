@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, ref, unref, watch } from 'vue'
+import { computed, nextTick, ref, unref, watch } from 'vue'
 import type { RouteLocationNormalizedLoaded, RouterLinkProps } from 'vue-router'
 import { useRouter } from 'vue-router'
 import { usePermissionStore } from '@/store/modules/permission'
@@ -25,7 +25,7 @@ const { t } = useI18n()
 
 const { currentRoute, push } = useRouter()
 
-const { closeAll, closeLeft, closeRight, closeOther, closeCurrent, refreshPage } = useTagsView()
+const { closeAll, closeLeft, closeRight, closeOther, closeCurrent } = useTagsView()
 
 const permissionStore = usePermissionStore()
 
@@ -100,18 +100,14 @@ const toLastView = () => {
 // 关闭全部
 const closeAllTags = () => {
   closeAll(() => {
-    toLastView()
+    tagsViewStore.delAllViews()
+    push('/blank')
   })
 }
 
 // 关闭其它
 const closeOthersTags = () => {
   closeOther()
-}
-
-// 重新加载
-const refreshSelectedTag = async (view?: RouteLocationNormalizedLoaded) => {
-  refreshPage(view)
 }
 
 // 关闭左侧
@@ -284,17 +280,6 @@ watch(
     :class="prefixCls"
     class="relative w-full flex bg-[#fff] dark:bg-[var(--el-bg-color)]"
   >
-    <span
-      :class="tagsViewImmerse ? '' : `${prefixCls}__tool ${prefixCls}__tool--first`"
-      class="h-[var(--tags-view-height)] w-[var(--tags-view-height)] flex cursor-pointer items-center justify-center"
-      @click="move(-200)"
-    >
-      <Icon
-        :hover-color="isDark ? '#fff' : 'var(--el-color-black)'"
-        color="var(--el-text-color-placeholder)"
-        icon="ep:d-arrow-left"
-      />
-    </span>
     <div class="flex-1 overflow-hidden">
       <ElScrollbar ref="scrollbarRef" class="h-full" @scroll="scroll">
         <div class="h-[var(--tags-view-height)] flex">
@@ -314,14 +299,6 @@ watch(
               }
             ]"
             :schema="[
-              {
-                icon: 'ep:refresh',
-                label: t('common.reload'),
-                disabled: selectedTag?.fullPath !== item.fullPath,
-                command: () => {
-                  refreshSelectedTag(item)
-                }
-              },
               {
                 icon: 'ep:close',
                 label: t('common.closeTab'),
@@ -409,37 +386,8 @@ watch(
         </div>
       </ElScrollbar>
     </div>
-    <span
-      :class="tagsViewImmerse ? '' : `${prefixCls}__tool`"
-      class="h-[var(--tags-view-height)] w-[var(--tags-view-height)] flex cursor-pointer items-center justify-center"
-      @click="move(200)"
-    >
-      <Icon
-        :hover-color="isDark ? '#fff' : 'var(--el-color-black)'"
-        color="var(--el-text-color-placeholder)"
-        icon="ep:d-arrow-right"
-      />
-    </span>
-    <span
-      :class="tagsViewImmerse ? '' : `${prefixCls}__tool`"
-      class="h-[var(--tags-view-height)] w-[var(--tags-view-height)] flex cursor-pointer items-center justify-center"
-      @click="refreshSelectedTag(selectedTag)"
-    >
-      <Icon
-        :hover-color="isDark ? '#fff' : 'var(--el-color-black)'"
-        color="var(--el-text-color-placeholder)"
-        icon="ep:refresh-right"
-      />
-    </span>
     <ContextMenu
       :schema="[
-        {
-          icon: 'ep:refresh',
-          label: t('common.reload'),
-          command: () => {
-            refreshSelectedTag(selectedTag)
-          }
-        },
         {
           icon: 'ep:close',
           label: t('common.closeTab'),

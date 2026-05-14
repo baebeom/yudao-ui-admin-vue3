@@ -3,13 +3,11 @@
     <el-card shadow="never" class="welcome-card">
       <div class="welcome-content">
         <div class="avatar-section">
-          <el-avatar :size="80" class="avatar">
-            <img src="@/assets/imgs/avatar.gif" alt="avatar" />
-          </el-avatar>
+          <el-avatar :size="80" :src="avatarUrl" class="avatar" />
         </div>
         <div class="greeting-section">
-          <h1 class="greeting-title">您好，{{ username }}！</h1>
-          <p class="greeting-subtitle">欢迎使用农知管理系统</p>
+          <h1 class="greeting-title">您好，{{ nickname }}！</h1>
+          <p class="greeting-subtitle">欢迎使用农知问答系统</p>
         </div>
       </div>
     </el-card>
@@ -49,8 +47,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/store/modules/user'
 import {
   ChatDotRound,
   Share,
@@ -61,31 +60,32 @@ import {
 defineOptions({ name: 'HomeIndex' })
 
 const router = useRouter()
+const userStore = useUserStore()
 
-// 获取用户名
-const getUsername = (): string => {
-  try {
-    // 尝试从 userStore 获取
-    const userInfo = localStorage.getItem('userInfo')
-    if (userInfo) {
-      const info = JSON.parse(userInfo)
-      if (info.nickname) return info.nickname
-      if (info.username) return info.username
-    }
-    // 尝试从 graph_user 获取
-    const graphUser = localStorage.getItem('graph_user')
-    if (graphUser) {
-      const user = JSON.parse(graphUser)
-      if (user.nickname) return user.nickname
-      if (user.username) return user.username
-    }
-  } catch (e) {
-    console.error('获取用户名失败', e)
+// ✅ 使用 userStore 获取用户信息
+const userInfo = computed(() => {
+  const user = userStore.getUser as any
+  return {
+    username: user?.username || '-',
+    nickname: user?.nickname || '用户',
+    mobile: user?.mobile || '-',
+    email: user?.email || '-',
+    avatar: user?.avatar || ''
   }
-  return '用户'
-}
+})
 
-const username = ref(getUsername())
+// 昵称
+const nickname = computed(() => userInfo.value.nickname)
+
+// 头像
+const avatarUrl = computed(() => {
+  const avatar = userInfo.value.avatar
+  if (avatar && avatar !== '') {
+    return avatar
+  }
+  const name = nickname.value || 'user'
+  return `https://api.dicebear.com/9.x/pixel-art/svg?seed=${name}&backgroundType=gradientLinear&backgroundColor=b6e3f4&radius=50`
+})
 
 // 登录身份
 const loginType = localStorage.getItem('loginType') || 'user'
@@ -96,40 +96,57 @@ const currentTime = ref('')
 let timer: ReturnType<typeof setInterval> | null = null
 
 // 快捷入口
-const quickEntries = [
-  {
-    title: '智能问答',
-    desc: '知识图谱智能问答',
-    path: '/graph/chat',
-    icon: ChatDotRound,
-    color: '#409EFF'
-  },
-  {
-    title: '实体检测',
-    desc: '实体关系检测',
-    path: '/graph/map',
-    icon: Share,
-    color: '#67C23A'
-  },
-  {
-    title: '个人资料',
-    desc: '查看修改个人信息',
-    path: '/profile/index',
-    icon: Setting,
-    color: '#E6A23C'
+const getQuickEntries = () => {
+  const baseEntries = [
+    {
+      title: '智能问答',
+      desc: '知识图谱智能问答',
+      path: '/graph/chat',
+      icon: ChatDotRound,
+      color: '#409EFF'
+    },
+    {
+      title: '实体检测',
+      desc: '实体关系检测',
+      path: '/graph/map',
+      icon: Share,
+      color: '#67C23A'
+    }
+  ]
+  
+  if (loginType === 'admin') {
+    return [
+      ...baseEntries,
+      {
+        title: '后台管理',
+        desc: '系统管理功能',
+        path: '/admin/conversation',
+        icon: Management,
+        color: '#F56C6C'
+      },
+      {
+        title: '个人资料',
+        desc: '查看修改个人信息',
+        path: '/profile/index',
+        icon: Setting,
+        color: '#E6A23C'
+      }
+    ]
+  } else {
+    return [
+      ...baseEntries,
+      {
+        title: '个人资料',
+        desc: '查看修改个人信息',
+        path: '/profile/index',
+        icon: Setting,
+        color: '#E6A23C'
+      }
+    ]
   }
-]
-
-// 如果是管理员，添加后台管理入口
-if (loginType === 'admin') {
-  quickEntries.push({
-    title: '后台管理',
-    desc: '系统管理功能',
-    path: '/admin/conversation',
-    icon: Management,
-    color: '#F56C6C'
-  })
 }
+
+const quickEntries = getQuickEntries()
 
 // 更新时间
 const updateTime = () => {
@@ -148,7 +165,15 @@ const goToPage = (path: string) => {
   router.push(path)
 }
 
+// ✅ 确保 userStore 有数据
+const initUserInfo = async () => {
+  if (!userStore.getUser?.nickname) {
+    await userStore.setUserInfoAction?.()
+  }
+}
+
 onMounted(() => {
+  initUserInfo()
   updateTime()
   timer = setInterval(updateTime, 1000)
 })

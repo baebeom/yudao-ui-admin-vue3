@@ -11,7 +11,7 @@ import {
   isGraphVisitorMode 
 } from '@/utils/graph-auth'
 
-// 直接定义类型，不再从外部导入
+// 直接定义类型
 interface UserLoginVO {
   username: string
   password: string
@@ -22,6 +22,7 @@ interface RegisterVO {
   password: string
   nickname?: string
   email?: string
+  mobile?: string
 }
 
 interface GraphUserState {
@@ -71,24 +72,41 @@ export const useGraphUserStore = defineStore('graph-user', {
           setGraphToken(data.token)
           setGraphVisitorMode(false)
           
-          // 设置基本用户信息
-          this.userInfo = {
-            id: data.userId,
-            nickname: userInfo.username,
-            visitor: 0
+          // 登录成功后，调用获取用户信息接口
+          try {
+            const infoRes = await request.get({
+              url: '/graph/auth/get-info',
+              headers: { 
+                'tenant-id': '1',
+                'Authorization': 'Bearer ' + data.token
+              }
+            })
+            const infoData = handleResponse(infoRes)
+            if (infoData) {
+              this.userInfo = infoData.user || infoData
+              this.roles = infoData.roles || ['user']
+            }
+          } catch (err) {
+            console.error('获取用户信息失败', err)
+            this.userInfo = {
+              id: data.userId,
+              nickname: userInfo.username,
+              username: userInfo.username,
+              visitor: 0
+            }
+            this.roles = ['user']
           }
-          this.roles = ['user'] // 默认角色
+          
           setGraphUser(this.userInfo)
           
-          // 存储角色到 localStorage
-          localStorage.setItem('userRoles', JSON.stringify(this.roles))
-          
-          // 存储用户信息
           const userInfoWithRoles = {
             ...this.userInfo,
             roles: this.roles
           }
           localStorage.setItem('userInfo', JSON.stringify(userInfoWithRoles))
+          localStorage.setItem('userRoles', JSON.stringify(this.roles))
+          
+          console.log('登录成功，用户信息:', this.userInfo)
           
           return { code: 200, data }
         }
@@ -114,24 +132,43 @@ export const useGraphUserStore = defineStore('graph-user', {
           setGraphToken(responseData.token)
           setGraphVisitorMode(false)
           
-          // 设置用户信息
-          this.userInfo = {
-            id: responseData.userId,
-            nickname: data.nickname || data.username,
-            visitor: 0
+          // 注册成功后也获取完整用户信息
+          try {
+            const infoRes = await request.get({
+              url: '/graph/auth/get-info',
+              headers: { 
+                'tenant-id': '1',
+                'Authorization': 'Bearer ' + responseData.token
+              }
+            })
+            const infoData = handleResponse(infoRes)
+            if (infoData) {
+              this.userInfo = infoData.user || infoData
+              this.roles = infoData.roles || ['user']
+            }
+          } catch (err) {
+            console.error('获取用户信息失败', err)
+            this.userInfo = {
+              id: responseData.userId,
+              nickname: data.nickname || data.username,
+              mobile: data.mobile || '',
+              email: data.email || '',
+              username: data.username,
+              visitor: 0
+            }
+            this.roles = ['user']
           }
-          this.roles = ['user']
+          
           setGraphUser(this.userInfo)
           
-          // 存储角色到 localStorage
-          localStorage.setItem('userRoles', JSON.stringify(this.roles))
-          
-          // 存储用户信息
           const userInfoWithRoles = {
             ...this.userInfo,
             roles: this.roles
           }
           localStorage.setItem('userInfo', JSON.stringify(userInfoWithRoles))
+          localStorage.setItem('userRoles', JSON.stringify(this.roles))
+          
+          console.log('注册成功，用户信息:', this.userInfo)
           
           return { code: 200, data: responseData }
         }
@@ -141,85 +178,42 @@ export const useGraphUserStore = defineStore('graph-user', {
       }
     },
 
-    // 游客登录
-    async guestLoginAction() {
+    // 获取用户信息
+    async getUserInfoAction() {
       try {
-        const res = await request.post({
-          url: '/graph/auth/visitor-login',
+        const res = await request.get({
+          url: '/graph/auth/get-info',
           headers: { 'tenant-id': '1' }
         })
         
         const data = handleResponse(res)
-        if (data && data.token) {
-          this.token = data.token
-          this.visitorMode = true
-          setGraphToken(data.token)
-          setGraphVisitorMode(true)
+        if (data) {
+          this.userInfo = data.user || data
+          this.roles = data.roles || ['user']
           
-          // 设置游客用户信息
-          this.userInfo = {
-            id: data.userId,
-            nickname: '游客用户',
-            visitor: 1
-          }
-          this.roles = ['visitor']
+          console.log('用户信息:', this.userInfo)
+          
           setGraphUser(this.userInfo)
           
-          // 存储角色到 localStorage
-          localStorage.setItem('userRoles', JSON.stringify(this.roles))
-          
-          // 存储用户信息
           const userInfoWithRoles = {
             ...this.userInfo,
             roles: this.roles
           }
           localStorage.setItem('userInfo', JSON.stringify(userInfoWithRoles))
-          
-          return { code: 200, data }
-        }
-        return res
-      } catch (error) {
-        return Promise.reject(error)
-      }
-    },
-
-    // 获取用户信息（如果需要从后端获取更多信息）
-    async getUserInfoAction() {
-      try {
-        // 如果已经有用户信息，直接返回
-        if (this.userInfo && this.userInfo.id) {
-          // 尝试从后端获取更详细的信息（可选）
-          const res = await request.get({
-            url: '/graph/user/get',
-            params: { id: this.userInfo.id },
-            headers: { 'tenant-id': '1' }
-          })
-          
-          const data = handleResponse(res)
-          if (data) {
-            this.userInfo = { ...this.userInfo, ...data }
-            setGraphUser(this.userInfo)
-          }
-        }
-        
-        // 确保角色存在
-        if (!this.roles.length) {
-          this.roles = this.visitorMode ? ['visitor'] : ['user']
           localStorage.setItem('userRoles', JSON.stringify(this.roles))
+          
+          return this.userInfo
         }
-        
-        return this.userInfo
+        return null
       } catch (error) {
         console.error('获取用户信息失败', error)
-        // 即使获取失败，也返回已有的基本信息
-        return this.userInfo
+        return null
       }
     },
 
     // 登出
     async logoutAction() {
       try {
-        // 尝试调用登出接口
         await request.post({
           url: '/graph/auth/logout',
           headers: { 'tenant-id': '1' }
@@ -240,12 +234,10 @@ export const useGraphUserStore = defineStore('graph-user', {
       removeGraphToken()
       setGraphVisitorMode(false)
       
-      // 清除 localStorage 中的角色和用户信息
       localStorage.removeItem('userRoles')
       localStorage.removeItem('userInfo')
     },
     
-    // 手动设置角色（用于调试或特殊情况）
     setRoles(roles: string[]) {
       this.roles = roles
       localStorage.setItem('userRoles', JSON.stringify(roles))

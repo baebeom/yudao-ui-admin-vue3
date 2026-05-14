@@ -144,7 +144,7 @@ const profileRoute: RouteRecordRaw = {
       name: 'ProfileIndex',
       component: () => import('@/views/Profile/Index.vue'),
       meta: {
-        title: '个人资料',
+        title: '个人中心',
         requiresAuth: true,
         icon: 'setting',
         activeMenu: '/profile/index',
@@ -155,47 +155,58 @@ const profileRoute: RouteRecordRaw = {
   ]
 }
 
+// 空白页路由
+const blankRoute: RouteRecordRaw = {
+  path: '/blank',
+  name: 'Blank',
+  component: () => import('@/layout/Layout.vue'),
+  redirect: '/blank/index',
+  meta: {
+    hidden: true,
+    title: '空白页',
+    noTagsView: true
+  },
+  children: [
+    {
+      path: 'index',
+      name: 'BlankIndex',
+      component: () => import('@/views/Blank.vue'),
+      meta: {
+        title: '空白页',
+        hidden: true
+      }
+    }
+  ]
+}
+
 // 路由表
 const remainingRouter: RouteRecordRaw[] = [
   {
     path: '/',
     redirect: '/home/index',
-    meta: {
-      hidden: true
-    }
+    meta: { hidden: true }
   },
-
   {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login/Login.vue'),
-    meta: {
-      hidden: true,
-      title: '登录',
-      noTagsView: true
-    }
+    meta: { hidden: true, title: '登录', noTagsView: true }
   },
-
   homeRoute,
   graphRoute,
   adminRoute,
   profileRoute,
-
+  blankRoute,  // 添加空白页路由
   {
     path: '/404',
     name: 'NotFound',
     component: () => import('@/views/Error/404.vue'),
-    meta: {
-      hidden: true
-    }
+    meta: { hidden: true }
   },
-
   {
     path: '/:pathMatch(.*)*',
     redirect: '/404',
-    meta: {
-      hidden: true
-    }
+    meta: { hidden: true }
   }
 ]
 

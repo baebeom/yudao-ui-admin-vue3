@@ -1,96 +1,72 @@
 <template>
   <div>
-    <div class="text-center">
-      <UserAvatar :img="userInfo?.avatar" />
-    </div>
+    <UserAvatar />
     <ul class="list-group list-group-striped">
       <li class="list-group-item">
         <Icon class="mr-5px" icon="ep:user" />
-        {{ t('profile.user.username') }}
-        <div class="pull-right">{{ userInfo?.username }}</div>
+        登录账号
+        <div class="pull-right">{{ userInfo?.username || '-' }}</div>
+      </li>
+      <li class="list-group-item">
+        <Icon class="mr-5px" icon="ep:user-filled" />
+        用户昵称
+        <div class="pull-right">{{ userInfo?.nickname || '-' }}</div>
       </li>
       <li class="list-group-item">
         <Icon class="mr-5px" icon="ep:phone" />
-        {{ t('profile.user.mobile') }}
-        <div class="pull-right">{{ userInfo?.mobile }}</div>
+        手机号码
+        <div class="pull-right">{{ userInfo?.mobile || '-' }}</div>
       </li>
       <li class="list-group-item">
         <Icon class="mr-5px" icon="fontisto:email" />
-        {{ t('profile.user.email') }}
-        <div class="pull-right">{{ userInfo?.email }}</div>
-      </li>
-      <li class="list-group-item">
-        <Icon class="mr-5px" icon="carbon:tree-view-alt" />
-        {{ t('profile.user.dept') }}
-        <div v-if="userInfo?.dept" class="pull-right">{{ userInfo?.dept.name }}</div>
-      </li>
-      <li class="list-group-item">
-        <Icon class="mr-5px" icon="ep:suitcase" />
-        {{ t('profile.user.posts') }}
-        <div v-if="userInfo?.posts" class="pull-right">
-          {{ userInfo?.posts.map((post) => post.name).join(',') }}
-        </div>
-      </li>
-      <li class="list-group-item">
-        <Icon class="mr-5px" icon="icon-park-outline:peoples" />
-        {{ t('profile.user.roles') }}
-        <div v-if="userInfo?.roles" class="pull-right">
-          {{ userInfo?.roles.map((role) => role.name).join(',') }}
-        </div>
+        电子邮箱
+        <div class="pull-right">{{ userInfo?.email || '-' }}</div>
       </li>
       <li class="list-group-item">
         <Icon class="mr-5px" icon="ep:calendar" />
-        {{ t('profile.user.createTime') }}
-        <div class="pull-right">{{ formatDate(userInfo.createTime) }}</div>
+        注册时间
+        <div class="pull-right">{{ userInfo?.createTime ? formatDate(userInfo.createTime) : '-' }}</div>
       </li>
     </ul>
   </div>
 </template>
+
 <script lang="ts" setup>
 import { formatDate } from '@/utils/formatTime'
 import UserAvatar from './UserAvatar.vue'
 import { useUserStore } from '@/store/modules/user'
 
-import { getUserProfile, ProfileVO } from '@/api/system/user/profile'
-
 defineOptions({ name: 'ProfileUser' })
 
-const { t } = useI18n()
 const userStore = useUserStore()
-const userInfo = ref({} as ProfileVO)
 
-const getUserInfo = async () => {
-  const users = await getUserProfile()
-  userInfo.value = users
-}
-
-// 监听 userStore 中头像的变化，同步更新本地 userInfo
-watch(
-  () => userStore.getUser.avatar,
-  (newAvatar) => {
-    if (newAvatar && userInfo.value) {
-      userInfo.value.avatar = newAvatar
-    }
+// 使用 as any 绕过类型检查
+const userInfo = computed(() => {
+  const user = userStore.getUser as any
+  return {
+    username: user?.username || '-',
+    nickname: user?.nickname || '-',
+    mobile: user?.mobile || '-',
+    email: user?.email || '-',
+    createTime: user?.createTime,
+    avatar: user?.avatar
   }
-)
-
-// 暴露刷新方法
-defineExpose({
-  refresh: getUserInfo
 })
 
-onMounted(async () => {
-  await getUserInfo()
+defineExpose({
+  refresh: () => {
+    userStore.setUserInfoAction?.()
+  }
+})
+
+onMounted(() => {
+  if (!userStore.getUser?.nickname) {
+    userStore.setUserInfoAction?.()
+  }
 })
 </script>
 
 <style scoped>
-.text-center {
-  position: relative;
-  height: 120px;
-  text-align: center;
-}
-
 .list-group-striped > .list-group-item {
   padding-right: 0;
   padding-left: 0;
