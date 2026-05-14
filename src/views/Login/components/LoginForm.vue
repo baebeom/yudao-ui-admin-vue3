@@ -382,39 +382,74 @@ onMounted(() => {
     color: var(--el-color-primary) !important;
   }
 }
-
-.login-code {
-  float: right;
-  width: 100%;
-  height: 38px;
-
-  img {
-    width: 100%;
-    height: auto;
-    max-width: 100px;
-    vertical-align: middle;
-    cursor: pointer;
-  }
-}
-
 :deep(.el-radio-group) {
   width: 100%;
   display: flex;
+  gap: 12px;
 
   .el-radio-button {
     flex: 1;
-
+    
     .el-radio-button__inner {
       width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-
+      background-color: transparent;  // 透明背景
+      border: 1px solid #dcdfe6;      // 添加边框
+      border-radius: 8px;             // 圆角
+      
       .el-icon {
         font-size: 16px;
       }
+      
+      &:hover {
+        border-color: #409eff;
+        color: #409eff;
+      }
+    }
+    
+    // 选中状态
+    &.is-active .el-radio-button__inner {
+      background-color: #409eff;
+      border-color: #409eff;
+      color: #fff;
     }
   }
 }
+// .login-code {
+//   float: right;
+//   width: 100%;
+//   height: 38px;
+
+//   img {
+//     width: 100%;
+//     height: auto;
+//     max-width: 100px;
+//     vertical-align: middle;
+//     cursor: pointer;
+//   }
+// }
+
+// :deep(.el-radio-group) {
+//   width: 100%;
+//   display: flex;
+
+//   .el-radio-button {
+//     flex: 1;
+
+//     .el-radio-button__inner {
+//       width: 100%;
+//       display: flex;
+//       align-items: center;
+//       justify-content: center;
+//       gap: 8px;
+
+//       .el-icon {
+//         font-size: 16px;
+//       }
+//     }
+//   }
+// }
 </style>

@@ -5,7 +5,6 @@
     </el-col>
     <el-col :span="24" class="px-10px">
       <el-card class="mb-10px text-center" shadow="hover">
-        <!-- 去掉 logo 属性 -->
         <Qrcode />
       </el-card>
     </el-col>

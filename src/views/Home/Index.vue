@@ -49,7 +49,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/store/modules/user'
 import {
   ChatDotRound,
   Share,
@@ -60,26 +59,31 @@ import {
 defineOptions({ name: 'HomeIndex' })
 
 const router = useRouter()
-const userStore = useUserStore()
 
-// ✅ 使用 userStore 获取用户信息
-const userInfo = computed(() => {
-  const user = userStore.getUser as any
-  return {
-    username: user?.username || '-',
-    nickname: user?.nickname || '用户',
-    mobile: user?.mobile || '-',
-    email: user?.email || '-',
-    avatar: user?.avatar || ''
+// 用户信息
+const userInfo = ref<any>(null)
+
+// 加载用户信息
+const loadUserInfo = () => {
+  try {
+    const info = localStorage.getItem('userInfo')
+    if (info) {
+      userInfo.value = JSON.parse(info)
+      console.log('加载用户信息:', userInfo.value)
+    }
+  } catch (e) {
+    console.error('获取用户信息失败', e)
   }
-})
+}
 
 // 昵称
-const nickname = computed(() => userInfo.value.nickname)
+const nickname = computed(() => {
+  return userInfo.value?.nickname || userInfo.value?.user?.nickname || '用户'
+})
 
 // 头像
 const avatarUrl = computed(() => {
-  const avatar = userInfo.value.avatar
+  const avatar = userInfo.value?.avatar || userInfo.value?.user?.avatar
   if (avatar && avatar !== '') {
     return avatar
   }
@@ -165,21 +169,23 @@ const goToPage = (path: string) => {
   router.push(path)
 }
 
-// ✅ 确保 userStore 有数据
-const initUserInfo = async () => {
-  if (!userStore.getUser?.nickname) {
-    await userStore.setUserInfoAction?.()
+// 监听 storage 变化
+const handleStorageChange = (event: StorageEvent) => {
+  if (event.key === 'userInfo') {
+    loadUserInfo()
   }
 }
 
 onMounted(() => {
-  initUserInfo()
+  loadUserInfo()
   updateTime()
   timer = setInterval(updateTime, 1000)
+  window.addEventListener('storage', handleStorageChange)
 })
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
+  window.removeEventListener('storage', handleStorageChange)
 })
 </script>
 
@@ -191,7 +197,7 @@ onUnmounted(() => {
 .welcome-card {
   margin-bottom: 20px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #409eff 0%, #53a8ff 100%);
 }
 
 .welcome-card :deep(.el-card__body) {

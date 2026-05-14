@@ -5,9 +5,9 @@
     :unique-opened="true"
     :router="true"
     class="app-sidebar-menu"
-    background-color="#304156"
-    text-color="#bfcbd9"
-    active-text-color="#409EFF"
+    background-color="#ffffff"
+    text-color="#303133"
+    active-text-color="#409eff" 
   >
     <template v-for="route in menuRoutes" :key="route.path">
 

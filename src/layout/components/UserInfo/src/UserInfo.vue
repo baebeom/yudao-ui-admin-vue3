@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useDesign } from '@/hooks/web/useDesign'
 import { useTagsViewStore } from '@/store/modules/tagsView'
@@ -15,35 +15,43 @@ const { t } = useI18n()
 const { push, replace } = useRouter()
 
 const userStore = useUserStore()
-
 const tagsViewStore = useTagsViewStore()
 
 const { getPrefixCls } = useDesign()
-
 const prefixCls = getPrefixCls('user-info')
 
-const userName = computed(() => {
-  return userStore.getUser?.nickname || '用户'
-})
+const userInfo = ref<any>(null)
 
-// 用户昵称
-const userNickname = computed(() => {
-  return userStore.getUser?.nickname || '用户'
-})
-
-// 头像 URL
-const avatarUrl = computed(() => {
-
-  // 用户上传头像
-  const userAvatar = userStore.getUser?.avatar
-  if (userAvatar && userAvatar !== '') {
-    return userAvatar
+const loadUserInfo = () => {
+  try {
+    const info = localStorage.getItem('userInfo')
+    if (info) {
+      userInfo.value = JSON.parse(info)
+    }
+  } catch (e) {
+    console.error('获取用户信息失败', e)
   }
+}
 
-  // 默认头像
-  const name = userNickname.value || 'user'
+// 昵称
+const userName = computed(() => userInfo.value?.nickname || 'Admin')
+
+// 头像
+const avatarUrl = computed(() => {
+  const avatar = userInfo.value?.avatar
+  if (avatar && avatar !== '') {
+    return avatar
+  }
+  const name = userName.value || 'user'
   return `https://api.dicebear.com/9.x/pixel-art/svg?seed=${name}&backgroundType=gradientLinear&backgroundColor=b6e3f4&radius=50`
 })
+
+// 监听 storage 变化
+const handleStorageChange = (event: StorageEvent) => {
+  if (event.key === 'userInfo') {
+    loadUserInfo()
+  }
+}
 
 // 锁定屏幕
 const lockStore = useLockStore()
@@ -69,6 +77,15 @@ const loginOut = async () => {
 const toProfile = async () => {
   push('/profile/index')
 }
+
+onMounted(() => {
+  loadUserInfo()
+  window.addEventListener('storage', handleStorageChange)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('storage', handleStorageChange)
+})
 </script>
 
 <template>

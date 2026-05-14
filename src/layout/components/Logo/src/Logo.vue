@@ -65,6 +65,7 @@ watch(
         'flex !h-[var(--logo-height)] items-center cursor-pointer pl-8px relative decoration-none overflow-hidden'
       ]"
       to="/"
+      style="background-color: #409eff;"
     >
       <!-- <img
         class="h-[calc(var(--logo-height)-10px)] w-[calc(var(--logo-height)-10px)]"

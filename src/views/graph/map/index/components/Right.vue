@@ -2,7 +2,7 @@
   <el-card class="my-card h-full flex-grow">
     <template #header>
       <h3 class="m-0 px-7 shrink-0 flex items-center justify-between">
-        <span>知识图谱 & 思维导图</span>
+        <span>思维导图 & 知识图谱</span>
         <div class="flex gap-2">
           <el-button size="small" @click="switchToMind" :type="showType === 'mind' ? 'primary' : 'default'">
             思维导图

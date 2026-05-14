@@ -1,68 +1,39 @@
 <template>
   <div
     :class="prefixCls"
-    class="relative h-[100%] lt-md:px-10px lt-sm:px-10px lt-xl:px-10px lt-xl:px-10px"
+    class="relative h-[100%] flex items-center justify-center"
   >
-    <div class="relative mx-auto h-full flex">
-      <div
-        :class="`${prefixCls}__left flex-1 bg-gray-500 bg-opacity-20 relative p-30px lt-xl:hidden overflow-x-hidden overflow-y-auto`"
-      >
-        <!-- 系统标题 -->
-        <div class="relative flex items-center text-white">
-          <span class="text-20px font-bold">{{ underlineToHump(appStore.getTitle) }}</span>
+    <!-- 背景图片 -->
+    <div class="login-bg"></div>
+    
+    <!-- 半透明白色矩形容器 -->
+    <div class="login-container">
+      <div class="login-content">
+        <!-- 标题 -->
+        <div class="login-header">
+          <h2 class="login-title">{{ underlineToHump(appStore.getTitle) }}</h2>
         </div>
-        <!-- 左边的背景图 + 欢迎语 -->
-        <div class="h-[calc(100%-60px)] flex items-center justify-center">
-          <TransitionGroup
-            appear
-            enter-active-class="animate__animated animate__bounceInLeft"
-            tag="div"
-          >
-            <img key="1" alt="" class="w-350px" src="@/assets/svgs/login-box-bg.svg" />
-            
-          </TransitionGroup>
+
+        <!-- 登录表单区域 -->
+        <div class="login-forms">
+          <LoginForm class="login-form-wrapper" />
+          <MobileForm class="login-form-wrapper" />
+          <QrCodeForm class="login-form-wrapper" />
+          <RegisterForm class="login-form-wrapper" />
+          <SSOLoginVue class="login-form-wrapper" />
+          <ForgetPasswordForm class="login-form-wrapper" />
         </div>
-      </div>
-      <div
-        class="relative flex-1 p-30px dark:bg-[var(--login-bg-color)] lt-sm:p-10px overflow-x-hidden overflow-y-auto"
-      >
-        <!-- 右上角的主题、语言选择 -->
-        <div
-          class="flex items-center justify-between at-2xl:justify-end at-xl:justify-end"
-          style="color: var(--el-text-color-primary);"
-        >
-          <div class="flex items-center at-2xl:hidden at-xl:hidden">
-            <img alt="" class="mr-10px h-48px w-48px" src="@/assets/imgs/logo.png" />
-            <span class="text-20px font-bold" >{{ underlineToHump(appStore.getTitle) }}</span>
-          </div>
-          <div class="flex items-center justify-end space-x-10px h-48px">
-            <ThemeSwitch />
-            <LocaleDropdown />
-          </div>
+
+        <!-- 底部 -->
+        <div class="login-footer">
+          <ThemeSwitch />
+          <LocaleDropdown />
         </div>
-        <!-- 右边的登录界面 -->
-        <Transition appear enter-active-class="animate__animated animate__bounceInRight">
-          <div
-            class="m-auto h-[calc(100%-60px)] w-[100%] flex items-center at-2xl:max-w-500px at-lg:max-w-500px at-md:max-w-500px at-xl:max-w-500px"
-          >
-            <!-- 账号登录 -->
-            <LoginForm class="m-auto h-auto p-20px lt-xl:(rounded-3xl light:bg-white)" />
-            <!-- 手机登录 -->
-            <MobileForm class="m-auto h-auto p-20px lt-xl:(rounded-3xl light:bg-white)" />
-            <!-- 二维码登录 -->
-            <QrCodeForm class="m-auto h-auto p-20px lt-xl:(rounded-3xl light:bg-white)" />
-            <!-- 注册 -->
-            <RegisterForm class="m-auto h-auto p-20px lt-xl:(rounded-3xl light:bg-white)" />
-            <!-- 三方登录 -->
-            <SSOLoginVue class="m-auto h-auto p-20px lt-xl:(rounded-3xl light:bg-white)" />
-            <!-- 忘记密码 -->
-            <ForgetPasswordForm class="m-auto h-auto p-20px lt-xl:(rounded-3xl light:bg-white)" />
-          </div>
-        </Transition>
       </div>
     </div>
   </div>
 </template>
+
 <script lang="ts" setup>
 import { underlineToHump } from '@/utils'
 
@@ -75,7 +46,6 @@ import { LoginForm, MobileForm, QrCodeForm, RegisterForm, SSOLoginVue, ForgetPas
 
 defineOptions({ name: 'Login' })
 
-const { t } = useI18n()
 const appStore = useAppStore()
 const { getPrefixCls } = useDesign()
 const prefixCls = getPrefixCls('login')
@@ -85,33 +55,139 @@ const prefixCls = getPrefixCls('login')
 $prefix-cls: #{$namespace}-login;
 
 .#{$prefix-cls} {
+  width: 100%;
+  height: 100%;
   overflow: auto;
-
-  &__left {
+  
+  .login-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('@/assets/imgs/bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 0;
+    
     &::before {
+      content: '';
       position: absolute;
       top: 0;
       left: 0;
-      z-index: -1;
       width: 100%;
       height: 100%;
-      background-image: url('@/assets/svgs/login-bg.svg');
-      background-position: center;
-      background-repeat: no-repeat;
-      content: '';
+      background: rgba(0, 0, 0, 0.3);
+    }
+  }
+  
+  .login-container {
+    position: relative;
+    z-index: 1;
+    width: 480px;
+    max-width: 90%;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(2px);
+  }
+  
+  .login-content {
+    padding: 40px 32px;
+  }
+  
+  .login-header {
+    text-align: center;
+    margin-bottom: 32px;
+    
+    .login-logo {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+    }
+    
+    .login-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #303133;
+      margin: 0;
+      letter-spacing: 2px;
+    }
+  }
+  
+  .login-forms {
+    min-height: 400px;
+  }
+  
+  .login-form-wrapper {
+    :deep(.el-card) {
+      background-color: transparent !important;
+      box-shadow: none !important;
+      border: none !important;
+    }
+    
+    :deep(.el-form-item) {
+      margin-bottom: 20px;
+    }
+    
+    :deep(.el-input__wrapper) {
+      background-color: #f5f7fa;
+      border-radius: 8px;
+    }
+    
+    :deep(.el-button--primary) {
+      width: 100%;
+      border-radius: 8px;
+      height: 44px;
+      font-size: 16px;
+    }
+    :deep(.el-divider__text) {
+      background-color: transparent !important;
+    }
+  }
+  
+  .login-footer {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e4e7ed;
+  }
+}
+
+.dark {
+  .login-container {
+    background: rgba(30, 30, 40, 0.92);
+    
+    .login-title {
+      color: #e5eaf3;
+    }
+    
+    .login-footer {
+      border-top-color: #414243;
     }
   }
 }
-</style>
 
-<style lang="scss">
-.dark .login-form {
-  .el-divider__text {
-    background-color: var(--login-bg-color);
+@media (max-width: 768px) {
+  .login-container {
+    width: 95%;
   }
-
-  .el-card {
-    background-color: var(--login-bg-color);
+  
+  .login-content {
+    padding: 30px 20px;
+  }
+  
+  .login-header .login-logo {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .login-header .login-title {
+    font-size: 20px;
   }
 }
 </style>
