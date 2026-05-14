@@ -1,37 +1,3 @@
-<template>
-  <Dialog title="设定" v-model="dialogVisible">
-    <el-form
-      ref="formRef"
-      :model="formData"
-      :rules="formRules"
-      label-width="130px"
-      v-loading="formLoading"
-    >
-      <el-form-item label="回复数 Token 数" prop="maxTokens">
-        <el-input-number
-          v-model="formData.maxTokens"
-          placeholder="请输入回复数 Token 数"
-          :min="0"
-          :max="8192"
-          class="!w-1/1"
-        />
-      </el-form-item>
-      <el-form-item label="上下文数量" prop="maxContexts">
-        <el-input-number
-          v-model="formData.maxContexts"
-          placeholder="请输入上下文数量"
-          :min="0"
-          :max="20"
-          class="!w-1/1"
-        />
-      </el-form-item>
-    </el-form>
-    <template #footer>
-      <el-button @click="submitForm" type="primary" :disabled="formLoading">确 定</el-button>
-      <el-button @click="dialogVisible = false">取 消</el-button>
-    </template>
-  </Dialog>
-</template>
 
 <script setup lang="ts">
 import service from '@/config/axios'

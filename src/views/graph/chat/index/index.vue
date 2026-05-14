@@ -19,18 +19,11 @@
           <span v-if="activeMessageList.length">({{ activeMessageList.length }})</span>
         </div>
         <div class="flex w-300px flex-row justify-end" v-if="activeConversation">
-          <el-button type="primary" bg plain size="small" @click="openChatConversationUpdateForm">
-            <span v-html="(activeConversation as any)?.modelName || '默认模型'"></span>
-            <Icon icon="ep:setting" class="ml-10px" />
-          </el-button>
           <el-button size="small" class="p-10px" @click="handlerMessageClear">
             <Icon
               icon="heroicons-outline:archive-box-x-mark"
               color="var(--el-text-color-placeholder)"
             />
-          </el-button>
-          <el-button size="small" class="p-10px">
-            <Icon icon="ep:download" color="var(--el-text-color-placeholder)" />
           </el-button>
           <el-button size="small" class="p-10px" @click="handleGoTopMessage">
             <Icon icon="ep:top" color="var(--el-text-color-placeholder)" />
@@ -81,11 +74,8 @@
           </textarea>
           <div class="flex justify-between pb-0 pt-5px">
             <div class="flex items-center">
-              <MessageFileUpload v-model="uploadFiles" :limit="5" :max-size="10" class="mr-10px" />
               <el-switch v-model="enableContext" />
               <span class="ml-5px mr-15px text-14px text-#8f8f8f">上下文</span>
-              <el-switch v-model="enableWebSearch" />
-              <span class="ml-5px text-14px text-#8f8f8f">联网搜索</span>
             </div>
             <el-button
               type="primary"
