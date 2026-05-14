@@ -107,17 +107,19 @@
 </template>
 
 <script setup lang="ts">
-import { dateFormatter } from '@/utils/formatTime'
+import { ContentWrap } from '@/components/ContentWrap'
+import Pagination from '@/components/Pagination/index.vue'
 import { ChatMessageApi, ChatMessageVO } from '@/api/graph/chat/message'
 import * as UserApi from '@/api/system/user'
 import { DICT_TYPE } from '@/utils/dict'
+import { formatDate } from '@/utils/formatTime'
 
-const message = useMessage() // 消息弹窗
-const { t } = useI18n() // 国际化
+const message = useMessage()
+const { t } = useI18n()
 
-const loading = ref(true) // 列表的加载中
-const list = ref<ChatMessageVO[]>([]) // 列表的数据
-const total = ref(0) // 列表的总页数
+const loading = ref(true)
+const list = ref<ChatMessageVO[]>([])
+const total = ref(0)
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
@@ -126,16 +128,22 @@ const queryParams = reactive({
   content: undefined,
   createTime: []
 })
-const queryFormRef = ref() // 搜索的表单
-const userList = ref<UserApi.UserVO[]>([]) // 用户列表
+const queryFormRef = ref()
+const userList = ref<UserApi.UserVO[]>([])
+
+// 日期格式化函数
+const dateFormatter = (_row: any, _column: any, cellValue: string) => {
+  return formatDate(cellValue)
+}
 
 /** 查询列表 */
 const getList = async () => {
   loading.value = true
   try {
     const data = await ChatMessageApi.getChatMessagePage(queryParams)
-    list.value = data.list
-    total.value = data.total
+    // 根据实际返回的数据结构调整
+    list.value = (data as any).list || data || []
+    total.value = (data as any).total || (data as any).length || 0
   } finally {
     loading.value = false
   }
@@ -156,12 +164,9 @@ const resetQuery = () => {
 /** 删除按钮操作 */
 const handleDelete = async (id: number) => {
   try {
-    // 删除的二次确认
     await message.delConfirm()
-    // 发起删除
     await ChatMessageApi.deleteChatMessageByAdmin(id)
     message.success(t('common.delSuccess'))
-    // 刷新列表
     await getList()
   } catch {}
 }
@@ -169,7 +174,6 @@ const handleDelete = async (id: number) => {
 /** 初始化 **/
 onMounted(async () => {
   getList()
-  // 获得用户列表
   userList.value = await UserApi.getSimpleUserList()
 })
 </script>

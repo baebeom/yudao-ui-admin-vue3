@@ -1,138 +1,181 @@
-<script lang="tsx">
-import { PropType } from 'vue'
-import { ElMenu, ElScrollbar } from 'element-plus'
+<template>
+  <el-menu
+    :default-active="activeMenu"
+    :collapse="appStore.getCollapse"
+    :unique-opened="true"
+    :router="true"
+    class="app-sidebar-menu"
+    background-color="#304156"
+    text-color="#bfcbd9"
+    active-text-color="#409EFF"
+  >
+    <template v-for="route in menuRoutes" :key="route.path">
+
+      <!-- 多个子菜单：显示下拉 -->
+      <el-sub-menu
+        v-if="route.children && route.children.length > 1"
+        :index="route.path"
+      >
+        <template #title>
+          <el-icon v-if="route.meta?.icon">
+            <component :is="route.meta.icon" />
+          </el-icon>
+
+          <span>{{ route.meta?.title }}</span>
+        </template>
+
+        <template v-for="child in route.children" :key="child.path">
+          <el-menu-item :index="getFullPath(route.path, child.path)">
+            <el-icon v-if="child.meta?.icon">
+              <component :is="child.meta.icon" />
+            </el-icon>
+
+            <template #title>
+              <span>{{ child.meta?.title }}</span>
+            </template>
+          </el-menu-item>
+        </template>
+      </el-sub-menu>
+
+      <!-- 只有一个子菜单：直接显示 -->
+      <el-menu-item
+        v-else-if="route.children && route.children.length === 1"
+        :index="getFullPath(route.path, route.children[0].path)"
+      >
+        <el-icon v-if="route.children[0].meta?.icon">
+          <component :is="route.children[0].meta.icon" />
+        </el-icon>
+
+        <template #title>
+          <span>{{ route.children[0].meta?.title }}</span>
+        </template>
+      </el-menu-item>
+
+      <!-- 无子菜单 -->
+      <el-menu-item v-else :index="route.path">
+        <el-icon v-if="route.meta?.icon">
+          <component :is="route.meta.icon" />
+        </el-icon>
+
+        <template #title>
+          <span>{{ route.meta?.title }}</span>
+        </template>
+      </el-menu-item>
+
+    </template>
+  </el-menu>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAppStore } from '@/store/modules/app'
-import { usePermissionStore } from '@/store/modules/permission'
-import { useRenderMenuItem } from './components/useRenderMenuItem'
-import { isUrl } from '@/utils/is'
-import { useDesign } from '@/hooks/web/useDesign'
-import { LayoutType } from '@/types/layout'
 import remainingRouter from '@/router/modules/remaining'
 
-const { getPrefixCls } = useDesign()
+const route = useRoute()
+const appStore = useAppStore()
 
-const prefixCls = getPrefixCls('menu')
-
-export default defineComponent({
-  name: 'Menu',
-  props: {
-    menuSelect: {
-      type: Function as PropType<(index: string) => void>,
-      default: undefined
-    }
-  },
-  setup(props) {
-    const appStore = useAppStore()
-
-    const layout = computed(() => appStore.getLayout)
-
-    const { push, currentRoute } = useRouter()
-
-    const permissionStore = usePermissionStore()
-
-    const menuMode = computed((): 'vertical' | 'horizontal' => {
-      const vertical: LayoutType[] = ['classic', 'topLeft', 'cutMenu']
-      if (vertical.includes(unref(layout))) {
-        return 'vertical'
-      } else {
-        return 'horizontal'
-      }
-    })
-
-    // 获取路由列表
-    const routers = computed(() => {
-      let storeRouters = unref(layout) === 'cutMenu' 
-        ? permissionStore.getMenuTabRouters 
-        : permissionStore.getRouters
-      
-      console.log('storeRouters 长度:', storeRouters?.length)
-      
-      // 如果 store 中的路由为空，使用 remainingRouter 中的 Graph 路由
-      if (!storeRouters || storeRouters.length === 0) {
-        console.log('使用静态路由 remainingRouter')
-        // 过滤出 Graph 相关的路由
-        const graphStaticRoutes = remainingRouter.filter(r => r.path === '/graph')
-        console.log('graphStaticRoutes:', graphStaticRoutes)
-        return graphStaticRoutes as any
-      }
-      
-      return storeRouters
-    })
-
-    const collapse = computed(() => appStore.getCollapse)
-
-    const uniqueOpened = computed(() => appStore.getUniqueOpened)
-
-    const activeMenu = computed(() => {
-      const { meta, path } = unref(currentRoute)
-      if (meta.activeMenu) {
-        return meta.activeMenu as string
-      }
-      return path
-    })
-
-    const menuSelect = (index: string) => {
-      if (props.menuSelect) {
-        props.menuSelect(index)
-      }
-      if (isUrl(index)) {
-        window.open(index)
-      } else {
-        push(index)
-      }
-    }
-
-    const renderMenuWrap = () => {
-      if (unref(layout) === 'top') {
-        return renderMenu()
-      } else {
-        return <ElScrollbar>{renderMenu()}</ElScrollbar>
-      }
-    }
-
-    const renderMenu = () => {
-      const { renderMenuItem } = useRenderMenuItem()
-      
-      return (
-        <ElMenu
-          defaultActive={unref(activeMenu)}
-          mode={unref(menuMode)}
-          collapse={
-            unref(layout) === 'top' || unref(layout) === 'cutMenu' ? false : unref(collapse)
-          }
-          uniqueOpened={unref(layout) === 'top' ? false : unref(uniqueOpened)}
-          backgroundColor="var(--left-menu-bg-color)"
-          textColor="var(--left-menu-text-color)"
-          activeTextColor="var(--left-menu-text-active-color)"
-          popperClass={
-            unref(menuMode) === 'vertical'
-              ? `${prefixCls}-popper--vertical`
-              : `${prefixCls}-popper--horizontal`
-          }
-          onSelect={menuSelect}
-        >
-          {{
-            default: () => renderMenuItem(unref(routers))
-          }}
-        </ElMenu>
-      )
-    }
-
-    return () => (
-      <div
-        id={prefixCls}
-        class={[
-          `${prefixCls} ${prefixCls}__${unref(menuMode)}`,
-          'h-[100%] overflow-hidden flex-col bg-[var(--left-menu-bg-color)]',
-          {
-            'w-[var(--left-menu-min-width)]': unref(collapse) && unref(layout) !== 'cutMenu',
-            'w-[var(--left-menu-max-width)]': !unref(collapse) && unref(layout) !== 'cutMenu'
-          }
-        ]}
-      >
-        {renderMenuWrap()}
-      </div>
-    )
+// 获取登录身份
+const getLoginType = (): string => {
+  try {
+    const loginType = localStorage.getItem('loginType')
+    return loginType || 'user'
+  } catch (e) {
+    return 'user'
   }
+}
+
+const loginType = getLoginType()
+
+// 拼接完整路径
+const getFullPath = (parentPath: string, childPath: string) => {
+  if (childPath.startsWith('/')) {
+    return childPath
+  }
+
+  return `${parentPath}/${childPath}`
+}
+
+// 权限判断
+const hasRolePermission = (route: any): boolean => {
+  const routeRoles = route.meta?.roles
+
+  if (!routeRoles) return false
+
+  if (!Array.isArray(routeRoles)) return false
+
+  const userRole = loginType === 'admin'
+    ? 'super_admin'
+    : 'common'
+
+  return routeRoles.includes(userRole)
+}
+
+// 过滤路由
+const filterRoutes = (routes: any[]): any[] => {
+  const result: any[] = []
+
+  for (const route of routes) {
+
+    // 隐藏路由
+    if (route.meta?.hidden === true) {
+      continue
+    }
+
+    // 排除系统路由
+    if (
+      route.path === '/' ||
+      route.path === '/login' ||
+      route.path === '/404'
+    ) {
+      continue
+    }
+
+    // 权限判断
+    if (!hasRolePermission(route)) {
+      continue
+    }
+
+    // 子路由过滤
+    if (route.children && route.children.length > 0) {
+
+      const filteredChildren = filterRoutes(route.children)
+
+      if (filteredChildren.length > 0) {
+        result.push({
+          ...route,
+          children: filteredChildren
+        })
+      }
+
+    } else {
+
+      result.push(route)
+
+    }
+  }
+
+  return result
+}
+
+// 菜单路由
+const menuRoutes = computed(() => {
+  return filterRoutes(remainingRouter as any[])
+})
+
+// 当前激活菜单
+const activeMenu = computed(() => {
+  const { path, meta } = route
+
+  return (meta as any)?.activeMenu
+    ? (meta as any).activeMenu
+    : path
 })
 </script>
+
+<style scoped>
+.app-sidebar-menu {
+  border-right: none;
+  height: 100%;
+}
+</style>

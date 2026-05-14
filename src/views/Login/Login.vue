@@ -7,9 +7,8 @@
       <div
         :class="`${prefixCls}__left flex-1 bg-gray-500 bg-opacity-20 relative p-30px lt-xl:hidden overflow-x-hidden overflow-y-auto`"
       >
-        <!-- 左上角的 logo + 系统标题 -->
+        <!-- 系统标题 -->
         <div class="relative flex items-center text-white">
-          <img alt="" class="mr-10px h-48px w-48px" src="@/assets/imgs/logo.png" />
           <span class="text-20px font-bold">{{ underlineToHump(appStore.getTitle) }}</span>
         </div>
         <!-- 左边的背景图 + 欢迎语 -->
@@ -20,10 +19,7 @@
             tag="div"
           >
             <img key="1" alt="" class="w-350px" src="@/assets/svgs/login-box-bg.svg" />
-            <div key="2" class="text-3xl text-white">{{ t('login.welcome') }}</div>
-            <div key="3" class="mt-5 text-14px font-normal text-white">
-              {{ t('login.message') }}
-            </div>
+            
           </TransitionGroup>
         </div>
       </div>

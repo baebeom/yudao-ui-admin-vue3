@@ -15,17 +15,22 @@
           <LoginFormTitle class="w-full" />
         </el-form-item>
       </el-col>
-      <!-- <el-col :span="24" class="px-10px">
-        <el-form-item v-if="loginData.tenantEnable === 'true'" prop="tenantName">
-          <el-input
-            v-model="loginData.loginForm.tenantName"
-            :placeholder="t('login.tenantNamePlaceholder')"
-            :prefix-icon="iconHouse"
-            link
-            type="primary"
-          />
+
+      <el-col :span="24" class="px-10px">
+        <el-form-item label="登录身份">
+          <el-radio-group v-model="loginRole" size="large">
+            <el-radio-button value="user">
+              <el-icon><User /></el-icon>
+              普通用户
+            </el-radio-button>
+            <el-radio-button value="admin">
+              <el-icon><Setting /></el-icon>
+              管理员
+            </el-radio-button>
+          </el-radio-group>
         </el-form-item>
-      </el-col> -->
+      </el-col>
+
       <el-col :span="24" class="px-10px">
         <el-form-item prop="username">
           <el-input
@@ -35,6 +40,7 @@
           />
         </el-form-item>
       </el-col>
+
       <el-col :span="24" class="px-10px">
         <el-form-item prop="password">
           <el-input
@@ -47,6 +53,7 @@
           />
         </el-form-item>
       </el-col>
+
       <el-col :span="24" class="px-10px mt-[-20px] mb-[-20px]">
         <el-form-item>
           <el-row justify="space-between" style="width: 100%">
@@ -67,6 +74,7 @@
           </el-row>
         </el-form-item>
       </el-col>
+
       <el-col :span="24" class="px-10px">
         <el-form-item>
           <XButton
@@ -78,6 +86,7 @@
           />
         </el-form-item>
       </el-col>
+
       <Verify
         v-if="loginData.captchaEnable === 'true'"
         ref="verify"
@@ -86,6 +95,7 @@
         mode="pop"
         @success="handleLogin"
       />
+
       <el-col :span="24" class="px-10px">
         <el-form-item>
           <el-row :gutter="5" justify="space-between" style="width: 100%">
@@ -113,7 +123,9 @@
           </el-row>
         </el-form-item>
       </el-col>
+
       <el-divider content-position="center">{{ t('login.otherLogin') }}</el-divider>
+
       <el-col :span="24" class="px-10px">
         <el-form-item>
           <div class="w-full flex justify-between">
@@ -127,20 +139,22 @@
               @click="doSocialLogin(item.type)"
             />
           </div>
-        </el-form-item>     
+        </el-form-item>
       </el-col>
     </el-row>
   </el-form>
 </template>
+
 <script lang="ts" setup>
 import { ElLoading } from 'element-plus'
+import { User, Setting } from '@element-plus/icons-vue'
 import LoginFormTitle from './LoginFormTitle.vue'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 
 import { useIcon } from '@/hooks/web/useIcon'
 
 import * as authUtil from '@/utils/auth'
-import { usePermissionStore } from '@/store/modules/permission'
+// import { usePermissionStore } from '@/store/modules/permission'
 import * as LoginApi from '@/api/login'
 import { LoginStateEnum, useFormValid, useLoginState } from './useLogin'
 
@@ -148,29 +162,38 @@ defineOptions({ name: 'LoginForm' })
 
 const { t } = useI18n()
 const message = useMessage()
-const iconHouse = useIcon({ icon: 'ep:house' })
+// const iconHouse = useIcon({ icon: 'ep:house' })
 const iconAvatar = useIcon({ icon: 'ep:avatar' })
 const iconLock = useIcon({ icon: 'ep:lock' })
 const formLogin = ref()
 const { validForm } = useFormValid(formLogin)
 const { setLoginState, getLoginState } = useLoginState()
 const { currentRoute, push } = useRouter()
-const permissionStore = usePermissionStore()
+// const permissionStore = usePermissionStore()
 const redirect = ref<string>('')
 const loginLoading = ref(false)
 const verify = ref()
-const captchaType = ref('blockPuzzle') // blockPuzzle 滑块 clickWord 点击文字 pictureWord 文字验证码
+const captchaType = ref('blockPuzzle')
 
+// 登录身份选择
+const loginRole = ref<'user' | 'admin'>('user')
 
-const TARGET_LOGIN_REDIRECT_PATH = '/graph/chat'
+// 登录成功跳转路径 - 所有人都跳转到首页
+const REDIRECT_PATHS = {
+  user: '/home',     
+  admin: '/home'     
+}
 
 const getShow = computed(() => unref(getLoginState) === LoginStateEnum.LOGIN)
 
+// 表单校验规则
+const required = { required: true, message: '该项为必填项', trigger: 'blur' }
 const LoginRules = {
   tenantName: [required],
   username: [required],
   password: [required]
 }
+
 const loginData = reactive({
   isShowPassword: false,
   captchaEnable: import.meta.env.VITE_APP_CAPTCHA_ENABLE,
@@ -180,7 +203,7 @@ const loginData = reactive({
     username: import.meta.env.VITE_APP_DEFAULT_LOGIN_USERNAME || '',
     password: import.meta.env.VITE_APP_DEFAULT_LOGIN_PASSWORD || '',
     captchaVerification: '',
-    rememberMe: true // 默认记录我。如果不需要，可手动修改
+    rememberMe: true
   }
 })
 
@@ -191,25 +214,24 @@ const socialList = [
   { icon: 'ant-design:alipay-circle-filled', type: 0 }
 ]
 
-// 获取验证码
+// 获取验证码/登录
 const getCode = async () => {
-  // 情况一，未开启：则直接登录
   if (loginData.captchaEnable === 'false') {
     await handleLogin({})
   } else {
-    // 情况二，已开启：则展示验证码；只有完成验证码的情况，才进行登录
-    // 弹出验证码
     verify.value.show()
   }
 }
-// 获取租户 ID
+
+// 获取租户ID
 const getTenantId = async () => {
   if (loginData.tenantEnable === 'true') {
     const res = await LoginApi.getTenantIdByName(loginData.loginForm.tenantName)
     authUtil.setTenantId(res)
   }
 }
-// 记住我
+
+// 读取本地缓存的登录信息
 const getLoginFormCache = () => {
   const loginForm = authUtil.getLoginForm()
   if (loginForm) {
@@ -222,7 +244,8 @@ const getLoginFormCache = () => {
     }
   }
 }
-// 根据域名，获得租户信息
+
+// 根据域名获取租户信息
 const getTenantByWebsite = async () => {
   if (loginData.tenantEnable === 'true') {
     try {
@@ -233,13 +256,14 @@ const getTenantByWebsite = async () => {
         authUtil.setTenantId(res.id)
       }
     } catch (error) {
-      // 未登录时调用此接口会 401，忽略即可
       console.warn('获取租户信息失败（未登录状态）', error)
     }
   }
 }
-const loading = ref() // ElLoading.service 返回的实例
-// 登录
+
+const loading = ref()
+
+// 🔥 核心修复：登录逻辑（不篡改后端权限，仅存储身份用于菜单）
 const handleLogin = async (params: any) => {
   loginLoading.value = true
   try {
@@ -259,30 +283,45 @@ const handleLogin = async (params: any) => {
       text: '正在加载系统中...',
       background: 'rgba(0, 0, 0, 0.7)'
     })
+
+    // 记住密码
     if (loginDataLoginForm.rememberMe) {
       authUtil.setLoginForm(loginDataLoginForm)
     } else {
       authUtil.removeLoginForm()
     }
     authUtil.setToken(res)
-    // 修改点：强制跳转到指定页面，忽略原有的 redirect 参数和 SSO 逻辑
-    await push({ path: TARGET_LOGIN_REDIRECT_PATH })
+
+    // 保存后端真实角色 + 登录选择的身份（关键！不破坏权限）
+    try {
+      const permissionInfo = await LoginApi.getInfo()
+      const roles = permissionInfo?.roles || ['common']
+      localStorage.setItem('userRoles', JSON.stringify(roles))
+    } catch (error) {
+      console.error('获取用户角色失败', error)
+      localStorage.setItem('userRoles', JSON.stringify(['common']))
+    }
+    // 仅存储登录选择的身份，用于前端菜单过滤
+    localStorage.setItem('loginType', loginRole.value)
+
+    // 跳转对应页面
+    const targetPath = REDIRECT_PATHS[loginRole.value]
+    await push({ path: targetPath })
+
   } finally {
     loginLoading.value = false
-    loading.value.close()
+    loading.value?.close()
   }
 }
 
-// 社交登录
+// 第三方登录
 const doSocialLogin = async (type: number) => {
   if (type === 0) {
     message.error('此方式未配置')
   } else {
     loginLoading.value = true
     if (loginData.tenantEnable === 'true') {
-      // 尝试先通过 tenantName 获取租户
       await getTenantId()
-      // 如果获取不到，则需要弹出提示，进行处理
       if (!authUtil.getTenantId()) {
         try {
           const data = await message.prompt('请输入租户名称', t('common.reminder'))
@@ -296,26 +335,26 @@ const doSocialLogin = async (type: number) => {
         }
       }
     }
-    // 修改点：社交登录回调后同样跳转到固定目标页面，替换原有的 redirect 参数
+
+    const redirectPath = REDIRECT_PATHS[loginRole.value]
     const redirectUri =
       location.origin +
       '/social-login?' +
-      encodeURIComponent(`type=${type}&redirect=${TARGET_LOGIN_REDIRECT_PATH}`)
+      encodeURIComponent(`type=${type}&redirect=${redirectPath}`)
 
-    // 进行跳转
     window.location.href = await LoginApi.socialAuthRedirect(type, encodeURIComponent(redirectUri))
   }
 }
+
+// 路由监听
 watch(
   () => currentRoute.value,
   (route: RouteLocationNormalizedLoaded) => {
-    // 保留原有 redirect 记录，但不再用于登录跳转（仅为兼容其他逻辑，不影响登录后跳转）
     redirect.value = route?.query?.redirect as string
   },
-  {
-    immediate: true
-  }
+  { immediate: true }
 )
+
 onMounted(() => {
   getLoginFormCache()
   getTenantByWebsite()
@@ -340,6 +379,27 @@ onMounted(() => {
     max-width: 100px;
     vertical-align: middle;
     cursor: pointer;
+  }
+}
+
+:deep(.el-radio-group) {
+  width: 100%;
+  display: flex;
+
+  .el-radio-button {
+    flex: 1;
+
+    .el-radio-button__inner {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+
+      .el-icon {
+        font-size: 16px;
+      }
+    }
   }
 }
 </style>

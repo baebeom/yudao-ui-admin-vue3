@@ -9,24 +9,17 @@
       label-width="68px"
     >
       <el-form-item label="用户编号" prop="userId">
-        <el-select
+        <el-input
           v-model="queryParams.userId"
-          clearable
           placeholder="请输入用户编号"
+          clearable
           class="!w-240px"
-        >
-          <el-option
-            v-for="item in userList"
-            :key="item.id"
-            :label="item.nickname"
-            :value="item.id"
-          />
-        </el-select>
+        />
       </el-form-item>
-      <el-form-item label="聊天编号" prop="title">
+      <el-form-item label="对话标题" prop="title">
         <el-input
           v-model="queryParams.title"
-          placeholder="请输入聊天编号"
+          placeholder="请输入对话标题"
           clearable
           @keyup.enter="handleQuery"
           class="!w-240px"
@@ -54,15 +47,16 @@
   <ContentWrap>
     <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
       <el-table-column label="对话编号" align="center" prop="id" width="180" fixed="left" />
-      <el-table-column label="对话标题" align="center" prop="title" width="180" fixed="left" />
-      <el-table-column label="用户" align="center" prop="userId" width="180">
+      <el-table-column label="对话标题" align="center" prop="title" width="200" />
+      <el-table-column label="用户编号" align="center" prop="userId" width="120" />
+      <el-table-column label="消息数量" align="center" prop="messageCount" width="100" />
+      <el-table-column label="是否置顶" align="center" prop="pinned" width="100">
         <template #default="scope">
-          <span>{{ userList.find((item) => item.id === scope.row.userId)?.nickname }}</span>
+          <el-tag :type="scope.row.pinned ? 'success' : 'info'">
+            {{ scope.row.pinned ? '已置顶' : '未置顶' }}
+          </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="角色" align="center" prop="roleName" width="180" />
-      <el-table-column label="模型标识" align="center" prop="model" width="180" />
-      <el-table-column label="消息数" align="center" prop="messageCount" />
       <el-table-column
         label="创建时间"
         align="center"
@@ -70,16 +64,12 @@
         :formatter="dateFormatter"
         width="180px"
       />
-      <el-table-column label="温度参数" align="center" prop="temperature" />
-      <el-table-column label="回复 Token 数" align="center" prop="maxTokens" width="120" />
-      <el-table-column label="上下文数量" align="center" prop="maxContexts" width="120" />
-      <el-table-column label="操作" align="center" width="180" fixed="right">
+      <el-table-column label="操作" align="center" width="120" fixed="right">
         <template #default="scope">
           <el-button
             link
             type="danger"
             @click="handleDelete(scope.row.id)"
-            v-hasPermi="['ai:chat-conversation:delete']"
           >
             删除
           </el-button>
@@ -99,69 +89,97 @@
 <script setup lang="ts">
 import { ContentWrap } from '@/components/ContentWrap'
 import Pagination from '@/components/Pagination/index.vue'
-import { ChatConversationApi, ChatConversationVO } from '@/api/graph/chat/conversation'
-import * as UserApi from '@/api/system/user'
 import { formatDate } from '@/utils/formatTime'
+import request from '@/config/axios'
 
 const message = useMessage()
 const { t } = useI18n()
 
 const loading = ref(true)
-const list = ref<ChatConversationVO[]>([])
+const list = ref<any[]>([])
 const total = ref(0)
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
-  userId: undefined,
-  title: undefined,
-  createTime: []
+  userId: undefined as number | undefined,
+  title: undefined as string | undefined,
+  createTime: [] as string[]
 })
 const queryFormRef = ref()
-const userList = ref<UserApi.UserVO[]>([])
 
-// 日期格式化函数
 const dateFormatter = (_row: any, _column: any, cellValue: string) => {
   return formatDate(cellValue)
 }
 
-/** 查询列表 */
 const getList = async () => {
   loading.value = true
   try {
-    const data = await ChatConversationApi.getChatConversationPage(queryParams)
-    // 根据实际返回的数据结构调整
-    list.value = (data as any).list || data || []
-    total.value = (data as any).total || (data as any).length || 0
+    const params: any = {
+      pageNo: queryParams.pageNo,
+      pageSize: queryParams.pageSize
+    }
+    if (queryParams.userId) params.userId = queryParams.userId
+    if (queryParams.title) params.title = queryParams.title
+    if (queryParams.createTime && queryParams.createTime.length === 2) {
+      params.createTime = queryParams.createTime
+    }
+    
+    const res = await request.get({
+      url: '/graph/chat/conversation/page',
+      params
+    })
+    
+    console.log('对话列表API返回:', res)
+    
+    if (res && res.code === 0) {
+      const data = res.data
+      list.value = data?.list || []
+      total.value = data?.total || 0
+    } else {
+      list.value = []
+      total.value = 0
+    }
+  } catch (error) {
+    console.error('获取列表失败:', error)
+    list.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
 }
 
-/** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.pageNo = 1
   getList()
 }
 
-/** 重置按钮操作 */
 const resetQuery = () => {
-  queryFormRef.value.resetFields()
+  queryFormRef.value?.resetFields()
+  queryParams.userId = undefined
+  queryParams.title = undefined
+  queryParams.createTime = []
   handleQuery()
 }
 
-/** 删除按钮操作 */
 const handleDelete = async (id: number) => {
   try {
     await message.delConfirm()
-    await ChatConversationApi.deleteChatConversationByAdmin(id)
-    message.success(t('common.delSuccess'))
-    await getList()
-  } catch {}
+    const res = await request.delete({
+      url: '/graph/chat/conversation/delete-by-admin',
+      params: { id }
+    })
+    if (res && res.code === 0) {
+      message.success(t('common.delSuccess'))
+      await getList()
+    } else {
+      message.error(res?.msg || '删除失败')
+    }
+  } catch (error) {
+    console.error('删除失败:', error)
+  }
 }
 
-/** 初始化 **/
-onMounted(async () => {
+onMounted(() => {
   getList()
-  userList.value = await UserApi.getSimpleUserList()
 })
 </script>

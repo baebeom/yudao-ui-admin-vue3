@@ -1,15 +1,12 @@
+// router/index.ts
 import type { App } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { createRouter, createWebHistory } from 'vue-router'
 import remainingRouter from './modules/remaining'
 import { getAccessToken } from '@/utils/auth'
-import { isRelogin } from '@/config/axios/service'
 import { useTitle } from '@/hooks/web/useTitle'
 import { useNProgress } from '@/hooks/web/useNProgress'
 import { usePageLoading } from '@/hooks/web/usePageLoading'
-import { useDictStoreWithOut } from '@/store/modules/dict'
-import { useUserStoreWithOut } from '@/store/modules/user'
-import { usePermissionStoreWithOut } from '@/store/modules/permission'
 
 const { start, done } = useNProgress()
 const { loadStart, loadDone } = usePageLoading()
@@ -21,130 +18,115 @@ const router = createRouter({
   scrollBehavior: () => ({ left: 0, top: 0 })
 })
 
-const parseURL = (url: string | null | undefined): { basePath: string; paramsObject: { [key: string]: string } } => {
-  if (url == null) {
-    return { basePath: '', paramsObject: {} }
-  }
-  const questionMarkIndex = url.indexOf('?')
-  let basePath = url
-  const paramsObject: { [key: string]: string } = {}
-  if (questionMarkIndex !== -1) {
-    basePath = url.substring(0, questionMarkIndex)
-    const queryString = url.substring(questionMarkIndex + 1)
-    const searchParams = new URLSearchParams(queryString)
-    searchParams.forEach((value, key) => {
-      paramsObject[key] = value
-    })
-  }
-  return { basePath, paramsObject }
-}
-
-// 🔥 获取任意有效 Token（主系统或 Graph）
+// 获取任意 token（优先主系统，再 Graph）
 const getAnyToken = () => {
   return getAccessToken() || localStorage.getItem('graph_token') || localStorage.getItem('GRAPH_ACCESS_TOKEN')
 }
 
-// 白名单路由（无需认证）
-const whiteList = ['/login', '/graph/chat', '/auth-redirect', '/bind', '/register']
+// 白名单（包含所有公开路径）
+const whiteList = ['/', '/login', '/auth-redirect', '/bind', '/register']
+// 修改 getDefaultHomePath 函数 - 所有人都跳转到首页
+const getDefaultHomePath = (): string => {
+  return '/home'  // 所有人都跳转到首页
+}
 
-let isPermissionInitialized = false
+// ✅ 修改：获取用户角色（用于后端权限，不用于前端菜单）
+// const getUserRoles = (): string[] => {
+//   try {
+//     const userStr = localStorage.getItem('userInfo') || sessionStorage.getItem('userInfo')
+//     if (userStr) {
+//       const userInfo = JSON.parse(userStr)
+//       return userInfo.roles?.map((r: any) => r.code || r) || []
+//     }
+//     const graphUser = localStorage.getItem('graph_user')
+//     if (graphUser) {
+//       const user = JSON.parse(graphUser)
+//       if (user.visitor === 1) return ['visitor']
+//       return ['user']
+//     }
+//   } catch (e) {
+//     console.error('获取角色失败', e)
+//   }
+//   return []
+// }
 
-// ==================== 全局路由守卫 ====================
-router.beforeEach(async (to, from, next) => {
+// ✅ 新增：获取登录身份（用于前端菜单和路由权限）
+const getLoginType = (): string => {
+  return localStorage.getItem('loginType') || 'user'
+}
+
+router.beforeEach(async (to, _from, next) => {
   start()
   loadStart()
   
-  console.log('路由跳转:', to.path)
-  console.log('当前完整路径:', to.fullPath)
-
+  console.log('=== 路由守卫调试 ===')
+  console.log('目标路径:', to.path)
+  
   const token = getAnyToken()
-  console.log('当前 Token 状态:', token ? '存在' : '不存在')
-
-  // 1. 白名单路径直接放行
-  if (whiteList.includes(to.path)) {
-    console.log('白名单放行:', to.path)
+  const isLoginPage = to.path === '/login'
+  
+  // 404页面直接放行
+  if (to.path === '/404') {
     next()
-    return
-  }
-
-  // 2. 已登录用户访问登录页 → 直接跳转到智能问答页面
-  if (token && to.path === '/login') {
-    console.log('已登录，从登录页跳转到 /graph/chat')
-    next('/graph/chat')
-    return
-  }
-
-  // ========== Graph 模块处理 ==========
-  if (to.path.startsWith('/graph')) {
-    // Graph 模块也认可主系统 Token
-    const graphToken = getAnyToken()
-    
-    if (graphToken) {
-      const permissionStore = usePermissionStoreWithOut()
-      
-      // 动态路由未初始化
-      if (!isPermissionInitialized) {
-        try {
-          console.log('生成 Graph 动态路由...')
-          await permissionStore.generateRoutes()
-          permissionStore.getAddRouters.forEach((route) => {
-            router.addRoute(route as unknown as RouteRecordRaw)
-          })
-          isPermissionInitialized = true
-          console.log('Graph 动态路由生成完成')
-          next({ ...to, replace: true })
-          return
-        } catch (error) {
-          console.error('生成路由失败:', error)
-          localStorage.removeItem('graph_token')
-          localStorage.removeItem('GRAPH_ACCESS_TOKEN')
-          next('/graph/login')
-          return
-        }
-      }
-      console.log('Graph 放行:', to.path)
-      next()
-    } else {
-      console.log('无有效 Token，跳转 /graph/login')
-      next(`/graph/login?redirect=${encodeURIComponent(to.fullPath)}`)
-    }
     return
   }
   
-  // ========== 主系统处理 ==========
-  if (token) {
-    // 已登录用户访问主系统任何页面（除登录页外）都放行
-    const dictStore = useDictStoreWithOut()
-    const userStore = useUserStoreWithOut()
-    const permissionStore = usePermissionStoreWithOut()
-    
-    if (!dictStore.getIsSetDict) {
-      dictStore.setDictMap()
-    }
-    
-    if (!userStore.getIsSetUser) {
-      isRelogin.show = true
-      await userStore.setUserInfoAction()
-      isRelogin.show = false
-      await permissionStore.generateRoutes()
-      permissionStore.getAddRouters.forEach((route) => {
-        router.addRoute(route as unknown as RouteRecordRaw)
-      })
-      const redirectPath = from.query.redirect || to.path
-      const redirect = decodeURIComponent(redirectPath as string)
-      const { paramsObject: query } = parseURL(redirect)
-      const nextData = to.path === redirect ? { ...to, replace: true } : { path: redirect, query }
-      next(nextData)
+  // 白名单放行
+  if (whiteList.includes(to.path)) {
+    // 已登录用户访问登录页 -> 重定向到首页
+    if (token && isLoginPage) {
+      const defaultPath = getDefaultHomePath()
+      next(defaultPath)
       return
     }
     next()
-  } else {
-    // 无 Token → 跳转主系统登录页
-    if (whiteList.includes(to.path)) {
+    return
+  }
+  
+  // 路由有效性检查
+  if (!to.matched || to.matched.length === 0) {
+    console.log('路由无效，跳转404')
+    next('/404')
+    return
+  }
+  
+  // 需要鉴权的路径
+  // 需要鉴权的路径
+const needAuth = to.path.startsWith('/home') ||  
+                 to.path.startsWith('/graph') || 
+                 to.path.startsWith('/admin') || 
+                 to.path.startsWith('/profile')
+  
+  if (needAuth) {
+    if (token) {
+      // ✅ 关键修改：使用 loginType 判断管理员权限，而不是 getUserRoles
+      const loginType = getLoginType()
+      const isAdmin = loginType === 'admin'
+      
+      console.log(`登录身份: ${loginType}, 是否管理员: ${isAdmin}`)
+      
+      // 只有管理员才能访问 /admin 开头的页面
+      if (to.path.startsWith('/admin') && !isAdmin) {
+        console.log('普通用户无权访问后台管理')
+        next('/graph/chat')
+        return
+      }
+      
+      console.log('Token验证通过，放行')
       next()
+      return
     } else {
-      next(`/login?redirect=${to.fullPath}`)
+      console.log('无Token，跳转登录')
+      next(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
+      return
     }
+  }
+  
+  // 默认处理
+  if (!token && !whiteList.includes(to.path)) {
+    next(`/login?redirect=${to.fullPath}`)
+  } else {
+    next()
   }
 })
 
@@ -155,11 +137,36 @@ router.afterEach((to) => {
 })
 
 export const resetRouter = (): void => {
-  const resetWhiteNameList = ['Redirect', 'Login', 'NoFound', 'Home', 'GraphLogin']
+  const resetWhiteNameList = [
+    'Redirect', 
+    'Login', 
+    'NotFound', 
+    'Home',
+    'Graph',
+    'GraphChat', 
+    'GraphMap',
+    'Admin',
+    'AdminConversation',
+    'AdminDatabase', 
+    'AdminUser',
+    'Profile',
+    'ProfileIndex'
+  ]
+  
   router.getRoutes().forEach((route) => {
     const { name } = route
     if (name && !resetWhiteNameList.includes(name as string)) {
-      router.hasRoute(name) && router.removeRoute(name)
+      if (router.hasRoute(name)) {
+        router.removeRoute(name)
+        console.log('移除路由:', name)
+      }
+    }
+  })
+  
+  remainingRouter.forEach(route => {
+    if (route.name && !router.hasRoute(route.name)) {
+      router.addRoute(route)
+      console.log('重新添加路由:', route.name)
     }
   })
 }

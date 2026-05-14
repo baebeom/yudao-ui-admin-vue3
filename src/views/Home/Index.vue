@@ -1,422 +1,255 @@
 <template>
-  <div>
-    <el-card shadow="never">
-      <el-skeleton :loading="loading" animated>
-        <el-row :gutter="16" justify="space-between">
-          <el-col :xl="12" :lg="12" :md="12" :sm="24" :xs="24">
-            <div class="flex items-center">
-              <el-avatar :src="avatar" :size="70" class="mr-16px">
-                <img src="@/assets/imgs/avatar.gif" alt="" />
-              </el-avatar>
-              <div>
-                <div class="text-20px">
-                  {{ t('workplace.welcome') }} {{ username }} {{ t('workplace.happyDay') }}
-                </div>
-                <div class="mt-10px text-14px text-gray-500">
-                  {{ t('workplace.toady') }}，20℃ - 32℃！
-                </div>
-              </div>
-            </div>
-          </el-col>
-          <el-col :xl="12" :lg="12" :md="12" :sm="24" :xs="24">
-            <div class="h-70px flex items-center justify-end lt-sm:mt-10px">
-              <div class="px-8px text-right">
-                <div class="mb-16px text-14px text-gray-400">{{ t('workplace.project') }}</div>
-                <CountTo
-                  class="text-20px"
-                  :start-val="0"
-                  :end-val="totalSate.project"
-                  :duration="2600"
-                />
-              </div>
-              <el-divider direction="vertical" />
-              <div class="px-8px text-right">
-                <div class="mb-16px text-14px text-gray-400">{{ t('workplace.toDo') }}</div>
-                <CountTo
-                  class="text-20px"
-                  :start-val="0"
-                  :end-val="totalSate.todo"
-                  :duration="2600"
-                />
-              </div>
-              <el-divider direction="vertical" border-style="dashed" />
-              <div class="px-8px text-right">
-                <div class="mb-16px text-14px text-gray-400">{{ t('workplace.access') }}</div>
-                <CountTo
-                  class="text-20px"
-                  :start-val="0"
-                  :end-val="totalSate.access"
-                  :duration="2600"
-                />
-              </div>
-            </div>
-          </el-col>
-        </el-row>
-      </el-skeleton>
+  <div class="home-container">
+    <el-card shadow="never" class="welcome-card">
+      <div class="welcome-content">
+        <div class="avatar-section">
+          <el-avatar :size="80" class="avatar">
+            <img src="@/assets/imgs/avatar.gif" alt="avatar" />
+          </el-avatar>
+        </div>
+        <div class="greeting-section">
+          <h1 class="greeting-title">您好，{{ username }}！</h1>
+          <p class="greeting-subtitle">欢迎使用农知管理系统</p>
+        </div>
+      </div>
     </el-card>
+
+    <!-- 功能快捷入口 -->
+    <el-row :gutter="20" class="quick-entry">
+      <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="item in quickEntries" :key="item.path">
+        <el-card shadow="hover" class="entry-card" @click="goToPage(item.path)">
+          <div class="entry-content">
+            <el-icon :size="40" :color="item.color">
+              <component :is="item.icon" />
+            </el-icon>
+            <div class="entry-title">{{ item.title }}</div>
+            <div class="entry-desc">{{ item.desc }}</div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 系统信息 -->
+    <el-row :gutter="20">
+      <el-col :span="24">
+        <el-card shadow="never" class="info-card">
+          <template #header>
+            <span class="card-header">系统信息</span>
+          </template>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="系统版本">v1.0.0</el-descriptions-item>
+            <el-descriptions-item label="知识图谱版本">v2.0</el-descriptions-item>
+            <el-descriptions-item label="当前时间">{{ currentTime }}</el-descriptions-item>
+            <el-descriptions-item label="登录身份">{{ loginTypeText }}</el-descriptions-item>
+          </el-descriptions>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
-
-  <el-row class="mt-8px" :gutter="8" justify="space-between">
-    <el-col :xl="16" :lg="16" :md="24" :sm="24" :xs="24" class="mb-8px">
-      <el-card shadow="never">
-        <template #header>
-          <div class="h-3 flex justify-between">
-            <span>{{ t('workplace.project') }}</span>
-            <el-link
-              type="primary"
-              :underline="false"
-              href="https://github.com/yudaocode"
-              target="_blank"
-            >
-              {{ t('action.more') }}
-            </el-link>
-          </div>
-        </template>
-        <el-skeleton :loading="loading" animated>
-          <el-row>
-            <el-col
-              v-for="(item, index) in projects"
-              :key="`card-${index}`"
-              :xl="8"
-              :lg="8"
-              :md="8"
-              :sm="24"
-              :xs="24"
-            >
-              <el-card
-                shadow="hover"
-                class="mr-5px mt-5px cursor-pointer"
-                @click="handleProjectClick(item.message)"
-              >
-                <div class="flex items-center">
-                  <Icon
-                    :icon="item.icon"
-                    :size="25"
-                    class="mr-8px"
-                    :style="{ color: item.color }"
-                  />
-                  <span class="text-16px">{{ item.name }}</span>
-                </div>
-                <div class="mt-12px text-12px text-gray-400">{{ t(item.message) }}</div>
-                <div class="mt-12px flex justify-between text-12px text-gray-400">
-                  <span>{{ item.personal }}</span>
-                  <span>{{ formatTime(item.time, 'yyyy-MM-dd') }}</span>
-                </div>
-              </el-card>
-            </el-col>
-          </el-row>
-        </el-skeleton>
-      </el-card>
-
-      <el-card shadow="never" class="mt-8px">
-        <el-skeleton :loading="loading" animated>
-          <el-row :gutter="20" justify="space-between">
-            <el-col :xl="10" :lg="10" :md="24" :sm="24" :xs="24">
-              <el-card shadow="hover" class="mb-8px">
-                <el-skeleton :loading="loading" animated>
-                  <Echart :options="pieOptionsData" :height="280" />
-                </el-skeleton>
-              </el-card>
-            </el-col>
-            <el-col :xl="14" :lg="14" :md="24" :sm="24" :xs="24">
-              <el-card shadow="hover" class="mb-8px">
-                <el-skeleton :loading="loading" animated>
-                  <Echart :options="barOptionsData" :height="280" />
-                </el-skeleton>
-              </el-card>
-            </el-col>
-          </el-row>
-        </el-skeleton>
-      </el-card>
-    </el-col>
-    <el-col :xl="8" :lg="8" :md="24" :sm="24" :xs="24" class="mb-8px">
-      <el-card shadow="never">
-        <template #header>
-          <div class="h-3 flex justify-between">
-            <span>{{ t('workplace.shortcutOperation') }}</span>
-          </div>
-        </template>
-        <el-skeleton :loading="loading" animated>
-          <el-row>
-            <el-col v-for="item in shortcut" :key="`team-${item.name}`" :span="8" class="mb-8px">
-              <div class="flex items-center">
-                <Icon :icon="item.icon" class="mr-8px" :style="{ color: item.color }" />
-                <el-link type="default" :underline="false" @click="handleShortcutClick(item.url)">
-                  {{ item.name }}
-                </el-link>
-              </div>
-            </el-col>
-          </el-row>
-        </el-skeleton>
-      </el-card>
-      <el-card shadow="never" class="mt-8px">
-        <template #header>
-          <div class="h-3 flex justify-between">
-            <span>{{ t('workplace.notice') }}</span>
-            <el-link type="primary" :underline="false">{{ t('action.more') }}</el-link>
-          </div>
-        </template>
-        <el-skeleton :loading="loading" animated>
-          <div v-for="(item, index) in notice" :key="`dynamics-${index}`">
-            <div class="flex items-center">
-              <el-avatar :src="avatar" :size="35" class="mr-16px">
-                <img src="@/assets/imgs/avatar.gif" alt="" />
-              </el-avatar>
-              <div>
-                <div class="text-14px">
-                  <Highlight :keys="item.keys.map((v) => t(v))">
-                    {{ item.type }} : {{ item.title }}
-                  </Highlight>
-                </div>
-                <div class="mt-16px text-12px text-gray-400">
-                  {{ formatTime(item.date, 'yyyy-MM-dd') }}
-                </div>
-              </div>
-            </div>
-            <el-divider />
-          </div>
-        </el-skeleton>
-      </el-card>
-    </el-col>
-  </el-row>
 </template>
-<script lang="ts" setup>
-import { set } from 'lodash-es'
-import { EChartsOption } from 'echarts'
-import { formatTime } from '@/utils'
 
-import { useUserStore } from '@/store/modules/user'
-// import { useWatermark } from '@/hooks/web/useWatermark'
-import type { WorkplaceTotal, Project, Notice, Shortcut } from './types'
-import { pieOptions, barOptions } from './echarts-data'
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  ChatDotRound,
+  Share,
+  Setting,
+  Management
+} from '@element-plus/icons-vue'
 
-defineOptions({ name: 'Index' })
+defineOptions({ name: 'HomeIndex' })
 
-const { t } = useI18n()
 const router = useRouter()
-const userStore = useUserStore()
-// const { setWatermark } = useWatermark()
-const loading = ref(true)
-const avatar = userStore.getUser.avatar
-const username = userStore.getUser.nickname
-const pieOptionsData = reactive<EChartsOption>(pieOptions) as EChartsOption
-// 获取统计数
-let totalSate = reactive<WorkplaceTotal>({
-  project: 0,
-  access: 0,
-  todo: 0
-})
 
-const getCount = async () => {
-  const data = {
-    project: 40,
-    access: 2340,
-    todo: 10
+// 获取用户名
+const getUsername = (): string => {
+  try {
+    // 尝试从 userStore 获取
+    const userInfo = localStorage.getItem('userInfo')
+    if (userInfo) {
+      const info = JSON.parse(userInfo)
+      if (info.nickname) return info.nickname
+      if (info.username) return info.username
+    }
+    // 尝试从 graph_user 获取
+    const graphUser = localStorage.getItem('graph_user')
+    if (graphUser) {
+      const user = JSON.parse(graphUser)
+      if (user.nickname) return user.nickname
+      if (user.username) return user.username
+    }
+  } catch (e) {
+    console.error('获取用户名失败', e)
   }
-  totalSate = Object.assign(totalSate, data)
+  return '用户'
 }
 
-// 获取项目数
-let projects = reactive<Project[]>([])
-const getProject = async () => {
-  const data = [
-    {
-      name: 'ruoyi-vue-pro',
-      icon: 'simple-icons:springboot',
-      message: 'github.com/YunaiV/ruoyi-vue-pro',
-      personal: 'Spring Boot 单体架构',
-      time: new Date('2025-01-02'),
-      color: '#6DB33F'
-    },
-    {
-      name: 'yudao-ui-admin-vue3',
-      icon: 'ep:element-plus',
-      message: 'github.com/yudaocode/yudao-ui-admin-vue3',
-      personal: 'Vue3 + element-plus 管理后台',
-      time: new Date('2025-02-03'),
-      color: '#409EFF'
-    },
-    {
-      name: 'yudao-ui-mall-uniapp',
-      icon: 'icon-park-outline:mall-bag',
-      message: 'github.com/yudaocode/yudao-ui-mall-uniapp',
-      personal: 'Vue3 + uniapp 商城手机端',
-      time: new Date('2025-03-04'),
-      color: '#ff4d4f'
-    },
-    {
-      name: 'yudao-cloud',
-      icon: 'material-symbols:cloud-outline',
-      message: 'github.com/YunaiV/yudao-cloud',
-      personal: 'Spring Cloud 微服务架构',
-      time: new Date('2025-04-05'),
-      color: '#1890ff'
-    },
-    {
-      name: 'yudao-ui-admin-vben',
-      icon: 'devicon:antdesign',
-      message: 'github.com/yudaocode/yudao-ui-admin-vben',
-      personal: 'Vue3 + vben5(antd) 管理后台',
-      time: new Date('2025-05-06'),
-      color: '#e18525'
-    },
-    {
-      name: 'yudao-ui-admin-uniapp',
-      icon: 'ant-design:mobile',
-      message: 'github.com/yudaocode/yudao-ui-admin-uniapp',
-      personal: 'Vue3 + uniapp 管理手机端',
-      time: new Date('2025-06-01'),
-      color: '#2979ff'
-    }
-  ]
-  projects = Object.assign(projects, data)
-}
+const username = ref(getUsername())
 
-// 获取通知公告
-let notice = reactive<Notice[]>([])
-const getNotice = async () => {
-  const data = [
-    {
-      title: '系统支持 JDK 8/17/21，Vue 2/3',
-      type: '技术兼容性',
-      keys: ['JDK', 'Vue'],
-      date: new Date()
-    },
-    {
-      title: '后端提供 Spring Boot 2.7/3.2 + Cloud 双架构',
-      type: '架构灵活性',
-      keys: ['Boot', 'Cloud'],
-      date: new Date()
-    },
-    {
-      title: '全部开源，个人与企业可 100% 直接使用，无需授权',
-      type: '开源免授权',
-      keys: ['无需授权'],
-      date: new Date()
-    },
-    {
-      title: '国内使用最广泛的快速开发平台，远超 10w+ 企业使用',
-      type: '广泛企业认可',
-      keys: ['最广泛', '10w+'],
-      date: new Date()
-    }
-  ]
-  notice = Object.assign(notice, data)
-}
+// 登录身份
+const loginType = localStorage.getItem('loginType') || 'user'
+const loginTypeText = loginType === 'admin' ? '管理员' : '普通用户'
 
-// 获取快捷入口
-let shortcut = reactive<Shortcut[]>([])
+// 当前时间
+const currentTime = ref('')
+let timer: ReturnType<typeof setInterval> | null = null
 
-const getShortcut = async () => {
-  const data = [
-    {
-      name: '首页',
-      icon: 'ion:home-outline',
-      url: '/',
-      color: '#1fdaca'
-    },
-    {
-      name: '商城中心',
-      icon: 'ep:shop',
-      url: '/mall/home',
-      color: '#ff6b6b'
-    },
-    {
-      name: 'AI 大模型',
-      icon: 'tabler:ai',
-      url: '/ai/chat',
-      color: '#7c3aed'
-    },
-    {
-      name: 'ERP 系统',
-      icon: 'simple-icons:erpnext',
-      url: '/erp/home',
-      color: '#3fb27f'
-    },
-    {
-      name: 'CRM 系统',
-      icon: 'simple-icons:civicrm',
-      url: '/crm/backlog',
-      color: '#4daf1bc9'
-    },
-    {
-      name: 'IoT 物联网',
-      icon: 'fa-solid:hdd',
-      url: '/iot/home',
-      color: '#1a73e8'
-    }
-  ]
-  shortcut = Object.assign(shortcut, data)
-}
+// 快捷入口
+const quickEntries = [
+  {
+    title: '智能问答',
+    desc: '知识图谱智能问答',
+    path: '/graph/chat',
+    icon: ChatDotRound,
+    color: '#409EFF'
+  },
+  {
+    title: '实体检测',
+    desc: '实体关系检测',
+    path: '/graph/map',
+    icon: Share,
+    color: '#67C23A'
+  },
+  {
+    title: '个人资料',
+    desc: '查看修改个人信息',
+    path: '/profile/index',
+    icon: Setting,
+    color: '#E6A23C'
+  }
+]
 
-// 用户来源
-const getUserAccessSource = async () => {
-  const data = [
-    { value: 335, name: 'analysis.directAccess' },
-    { value: 310, name: 'analysis.mailMarketing' },
-    { value: 234, name: 'analysis.allianceAdvertising' },
-    { value: 135, name: 'analysis.videoAdvertising' },
-    { value: 1548, name: 'analysis.searchEngines' }
-  ]
-  set(
-    pieOptionsData,
-    'legend.data',
-    data.map((v) => t(v.name))
-  )
-  pieOptionsData!.series![0].data = data.map((v) => {
-    return {
-      name: t(v.name),
-      value: v.value
-    }
+// 如果是管理员，添加后台管理入口
+if (loginType === 'admin') {
+  quickEntries.push({
+    title: '后台管理',
+    desc: '系统管理功能',
+    path: '/admin/conversation',
+    icon: Management,
+    color: '#F56C6C'
   })
 }
-const barOptionsData = reactive<EChartsOption>(barOptions) as EChartsOption
 
-// 周活跃量
-const getWeeklyUserActivity = async () => {
-  const data = [
-    { value: 13253, name: 'analysis.monday' },
-    { value: 34235, name: 'analysis.tuesday' },
-    { value: 26321, name: 'analysis.wednesday' },
-    { value: 12340, name: 'analysis.thursday' },
-    { value: 24643, name: 'analysis.friday' },
-    { value: 1322, name: 'analysis.saturday' },
-    { value: 1324, name: 'analysis.sunday' }
-  ]
-  set(
-    barOptionsData,
-    'xAxis.data',
-    data.map((v) => t(v.name))
-  )
-  set(barOptionsData, 'series', [
-    {
-      name: t('analysis.activeQuantity'),
-      data: data.map((v) => v.value),
-      type: 'bar'
-    }
-  ])
+// 更新时间
+const updateTime = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+  currentTime.value = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
-const getAllApi = async () => {
-  await Promise.all([
-    getCount(),
-    getProject(),
-    getNotice(),
-    getShortcut(),
-    getUserAccessSource(),
-    getWeeklyUserActivity()
-  ])
-  loading.value = false
+// 跳转页面
+const goToPage = (path: string) => {
+  router.push(path)
 }
 
-const handleProjectClick = (message: string) => {
-  window.open(`https://${message}`, '_blank')
-}
+onMounted(() => {
+  updateTime()
+  timer = setInterval(updateTime, 1000)
+})
 
-const handleShortcutClick = (url: string) => {
-  router.push(url)
-}
-
-getAllApi()
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+})
 </script>
+
+<style scoped>
+.home-container {
+  padding: 20px;
+}
+
+.welcome-card {
+  margin-bottom: 20px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.welcome-card :deep(.el-card__body) {
+  padding: 30px;
+}
+
+.welcome-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.avatar-section .avatar {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.greeting-section {
+  color: white;
+}
+
+.greeting-title {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 500;
+}
+
+.greeting-subtitle {
+  margin: 0;
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.quick-entry {
+  margin-bottom: 20px;
+}
+
+.entry-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 12px;
+}
+
+.entry-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.entry-content {
+  text-align: center;
+  padding: 20px 10px;
+}
+
+.entry-title {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 12px 0 6px 0;
+}
+
+.entry-desc {
+  font-size: 12px;
+  color: #909399;
+}
+
+.info-card {
+  border-radius: 12px;
+}
+
+.card-header {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .greeting-title {
+    font-size: 22px;
+  }
+  
+  .entry-content {
+    padding: 15px 5px;
+  }
+  
+  .entry-title {
+    font-size: 14px;
+  }
+}
+</style>
