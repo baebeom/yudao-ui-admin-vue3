@@ -17,21 +17,6 @@
       </el-col>
 
       <el-col :span="24" class="px-10px">
-        <el-form-item label="登录身份">
-          <el-radio-group v-model="loginRole" size="large">
-            <el-radio-button value="user">
-              <el-icon><User /></el-icon>
-              普通用户
-            </el-radio-button>
-            <el-radio-button value="admin">
-              <el-icon><Setting /></el-icon>
-              管理员
-            </el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-      </el-col>
-
-      <el-col :span="24" class="px-10px">
         <el-form-item prop="username">
           <el-input
             v-model="loginData.loginForm.username"
@@ -154,7 +139,6 @@ import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import { useIcon } from '@/hooks/web/useIcon'
 
 import * as authUtil from '@/utils/auth'
-// import { usePermissionStore } from '@/store/modules/permission'
 import * as LoginApi from '@/api/login'
 import { LoginStateEnum, useFormValid, useLoginState } from './useLogin'
 
@@ -162,27 +146,16 @@ defineOptions({ name: 'LoginForm' })
 
 const { t } = useI18n()
 const message = useMessage()
-// const iconHouse = useIcon({ icon: 'ep:house' })
 const iconAvatar = useIcon({ icon: 'ep:avatar' })
 const iconLock = useIcon({ icon: 'ep:lock' })
 const formLogin = ref()
 const { validForm } = useFormValid(formLogin)
 const { setLoginState, getLoginState } = useLoginState()
 const { currentRoute, push } = useRouter()
-// const permissionStore = usePermissionStore()
 const redirect = ref<string>('')
 const loginLoading = ref(false)
 const verify = ref()
 const captchaType = ref('blockPuzzle')
-
-// 登录身份选择
-const loginRole = ref<'user' | 'admin'>('user')
-
-// 登录成功跳转路径 - 所有人都跳转到首页
-const REDIRECT_PATHS = {
-  user: '/home',     
-  admin: '/home'     
-}
 
 const getShow = computed(() => unref(getLoginState) === LoginStateEnum.LOGIN)
 
@@ -289,16 +262,14 @@ const handleLogin = async (params: any) => {
     }
     authUtil.setToken(res)
 
-    // 关键：获取并存储用户完整信息
+    // 获取并存储用户完整信息
     try {
       const permissionInfo = await LoginApi.getInfo()
       console.log('获取到的用户信息:', permissionInfo)
       
-      // 存储角色
       const roles = permissionInfo?.roles || ['common']
       localStorage.setItem('userRoles', JSON.stringify(roles))
       
-      // 存储用户信息
       if (permissionInfo?.user) {
         const userInfo = {
           id: permissionInfo.user.id,
@@ -310,17 +281,21 @@ const handleLogin = async (params: any) => {
           createTime: permissionInfo.user.createTime
         }
         localStorage.setItem('userInfo', JSON.stringify(userInfo))
-        console.log('用户信息已存储:', userInfo)
       }
     } catch (error) {
       console.error('获取用户信息失败', error)
     }
     
-    // 存储登录身份
-    localStorage.setItem('loginType', loginRole.value)
-
-    // 跳转
-    const targetPath = REDIRECT_PATHS[loginRole.value]
+    // 根据后端返回的 redirectUrl 跳转，若不存在则根据 userType 或默认逻辑
+    let targetPath = ''
+    if (res.redirectUrl) {
+      targetPath = res.redirectUrl
+    } else {
+      // 根据 userType 决定跳转：ADMIN -> 后台，其他 -> 前台首页
+      const userType = res.userType || 'NORMAL'
+      targetPath = userType === 'ADMIN' ? '/admin/dashboard' : '/user/home'
+    }
+    
     await push({ path: targetPath })
 
   } finally {
@@ -351,7 +326,8 @@ const doSocialLogin = async (type: number) => {
       }
     }
 
-    const redirectPath = REDIRECT_PATHS[loginRole.value]
+    // 第三方登录回调后，后端会处理登录并返回 redirectUrl，这里使用根路径
+    const redirectPath = '/'
     const redirectUri =
       location.origin +
       '/social-login?' +
@@ -382,74 +358,40 @@ onMounted(() => {
     color: var(--el-color-primary) !important;
   }
 }
+
 :deep(.el-radio-group) {
-  width: 100%;
   display: flex;
+  width: 100%;
   gap: 12px;
 
   .el-radio-button {
     flex: 1;
-    
+
     .el-radio-button__inner {
-      width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
+      width: 100%;
       gap: 8px;
-      background-color: transparent;  // 透明背景
-      border: 1px solid #dcdfe6;      // 添加边框
-      border-radius: 8px;             // 圆角
-      
+      background-color: transparent;
+      border: 1px solid #dcdfe6;
+      border-radius: 8px;
+
       .el-icon {
         font-size: 16px;
       }
-      
+
       &:hover {
-        border-color: #409eff;
         color: #409eff;
+        border-color: #409eff;
       }
     }
-    
-    // 选中状态
+
     &.is-active .el-radio-button__inner {
+      color: #fff;
       background-color: #409eff;
       border-color: #409eff;
-      color: #fff;
     }
   }
 }
-// .login-code {
-//   float: right;
-//   width: 100%;
-//   height: 38px;
-
-//   img {
-//     width: 100%;
-//     height: auto;
-//     max-width: 100px;
-//     vertical-align: middle;
-//     cursor: pointer;
-//   }
-// }
-
-// :deep(.el-radio-group) {
-//   width: 100%;
-//   display: flex;
-
-//   .el-radio-button {
-//     flex: 1;
-
-//     .el-radio-button__inner {
-//       width: 100%;
-//       display: flex;
-//       align-items: center;
-//       justify-content: center;
-//       gap: 8px;
-
-//       .el-icon {
-//         font-size: 16px;
-//       }
-//     }
-//   }
-// }
 </style>

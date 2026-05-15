@@ -15,14 +15,15 @@
 import { ref, computed, onMounted } from 'vue'
 import UserAvatar from './UserAvatar.vue'
 import { getUserProfile } from '@/api/system/user/profile'
-import { useUserStore } from '@/store/modules/user'  // ✅ 导入 store
+import { useUserStore } from '@/store/modules/user'
+import { useCache, CACHE_KEY } from '@/hooks/web/useCache'
 
 defineOptions({ name: 'ProfileUser' })
 
-const userStore = useUserStore()  // ✅ 获取 store 实例
+const userStore = useUserStore()
+const { wsCache } = useCache()  // ✅ 正确获取 wsCache
 const userInfo = ref<any>(null)
 
-// 格式化注册时间
 const formatCreateTime = computed(() => {
   const timestamp = userInfo.value?.createTime
   if (!timestamp) return '-'
@@ -36,25 +37,33 @@ const formatCreateTime = computed(() => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 })
 
-// 获取用户信息
 const fetchUserInfo = async () => {
   try {
     const res = await getUserProfile()
     const data = res?.data || res
     userInfo.value = data
-    console.log('ProfileUser 加载数据:', data)
+    console.log('ProfileUser 获取到数据:', data)
     
-    // ✅ 关键：将完整数据同步到 userStore
     if (data) {
-      userStore.updateUserProfile({
+      // 直接更新 store 中的用户信息
+      userStore.user = {
+        ...userStore.user,
         id: data.id,
         username: data.username,
         nickname: data.nickname,
         mobile: data.mobile,
         email: data.email,
-        avatar: data.avatar,
+        avatar: data.avatar || '',
         createTime: data.createTime
-      })
+      }
+      
+      // 同时更新缓存
+      const userInfoCache = wsCache.get(CACHE_KEY.USER)
+      if (userInfoCache) {
+        userInfoCache.user = userStore.user
+        wsCache.set(CACHE_KEY.USER, userInfoCache)
+      }
+      
       console.log('已同步到 store，当前 store:', userStore.getUser)
     }
   } catch (error) {
@@ -62,7 +71,6 @@ const fetchUserInfo = async () => {
   }
 }
 
-// 暴露给父组件调用的刷新方法
 defineExpose({
   refresh: fetchUserInfo
 })
@@ -71,7 +79,6 @@ onMounted(() => {
   fetchUserInfo()
 })
 </script>
-
 <style scoped>
 .list-group-striped > .list-group-item {
   padding-right: 0;

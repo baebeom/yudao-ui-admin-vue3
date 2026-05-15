@@ -13,7 +13,7 @@
       <el-input v-model="formModel.email" />
     </el-form-item>
     <el-form-item>
-      <div style="display: flex; justify-content: center; width: calc(100% + 100px); margin-left: -100px;">
+      <div style="display: flex; justify-content: center; width: 100%;">
         <el-button type="primary" @click="submit">保存修改</el-button>
       </div>
     </el-form-item>
@@ -27,10 +27,12 @@ import { useUserStore } from '@/store/modules/user'
 import { updateUserProfile } from '@/api/system/user/profile'
 import { useMessage } from '@/hooks/web/useMessage'
 import { useI18n } from '@/hooks/web/useI18n'
+import { useCache, CACHE_KEY } from '@/hooks/web/useCache'
 
 const { t } = useI18n()
 const { success, error } = useMessage()
 const userStore = useUserStore()
+const { wsCache } = useCache()  // ✅ 正确获取 wsCache
 const formRef = ref<FormInstance>()
 const emit = defineEmits(['success'])
 
@@ -97,7 +99,22 @@ const submit = async () => {
       }
       await updateUserProfile(payload)
       success(t('common.updateSuccess'))
-      userStore.updateUserProfile(payload)
+      
+      // 更新 store 中的用户信息
+      userStore.user = {
+        ...userStore.user,
+        nickname: payload.nickname,
+        mobile: payload.mobile,
+        email: payload.email
+      }
+      
+      // 同时更新缓存
+      const userInfoCache = wsCache.get(CACHE_KEY.USER)
+      if (userInfoCache) {
+        userInfoCache.user = userStore.user
+        wsCache.set(CACHE_KEY.USER, userInfoCache)
+      }
+      
       emit('success')
     } catch (err) {
       error('修改失败')

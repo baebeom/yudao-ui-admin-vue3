@@ -1,48 +1,57 @@
 <template>
   <div class="home-container">
-    <el-card shadow="never" class="welcome-card">
-      <div class="welcome-content">
-        <div class="avatar-section">
-          <el-avatar :size="80" :src="avatarUrl" class="avatar" />
-        </div>
-        <div class="greeting-section">
-          <h1 class="greeting-title">您好，{{ nickname }}！</h1>
-          <p class="greeting-subtitle">欢迎使用农知问答系统</p>
-        </div>
-      </div>
-    </el-card>
-
-    <!-- 功能快捷入口 -->
-    <el-row :gutter="20" class="quick-entry">
-      <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="item in quickEntries" :key="item.path">
-        <el-card shadow="hover" class="entry-card" @click="goToPage(item.path)">
-          <div class="entry-content">
-            <el-icon :size="40" :color="item.color">
-              <component :is="item.icon" />
-            </el-icon>
-            <div class="entry-title">{{ item.title }}</div>
-            <div class="entry-desc">{{ item.desc }}</div>
+    <!-- 加载中 -->
+    <div v-if="loading" class="loading-container">
+      <div class="circle-spinner"></div>
+      <div class="loading-text">加载中...</div>
+    </div>
+    
+    <!-- 正常内容 -->
+    <template v-else>
+      <el-card shadow="never" class="welcome-card">
+        <div class="welcome-content">
+          <div class="avatar-section">
+            <el-avatar :size="80" :src="avatarUrl" class="avatar" />
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+          <div class="greeting-section">
+            <h1 class="greeting-title">您好，{{ nickname }}！</h1>
+            <p class="greeting-subtitle">欢迎使用农知问答系统</p>
+          </div>
+        </div>
+      </el-card>
 
-    <!-- 系统信息 -->
-    <el-row :gutter="20">
-      <el-col :span="24">
-        <el-card shadow="never" class="info-card">
-          <template #header>
-            <span class="card-header">系统信息</span>
-          </template>
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="系统版本">v1.0.0</el-descriptions-item>
-            <el-descriptions-item label="知识图谱版本">v2.0</el-descriptions-item>
-            <el-descriptions-item label="当前时间">{{ currentTime }}</el-descriptions-item>
-            <el-descriptions-item label="登录身份">{{ loginTypeText }}</el-descriptions-item>
-          </el-descriptions>
-        </el-card>
-      </el-col>
-    </el-row>
+      <!-- 功能快捷入口 -->
+      <el-row :gutter="20" class="quick-entry">
+        <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="item in quickEntries" :key="item.path">
+          <el-card shadow="hover" class="entry-card" @click="goToPage(item.path)">
+            <div class="entry-content">
+              <el-icon :size="40" :color="item.color">
+                <component :is="item.icon" />
+              </el-icon>
+              <div class="entry-title">{{ item.title }}</div>
+              <div class="entry-desc">{{ item.desc }}</div>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <!-- 系统信息 -->
+      <el-row :gutter="20">
+        <el-col :span="24">
+          <el-card shadow="never" class="info-card">
+            <template #header>
+              <span class="card-header">系统信息</span>
+            </template>
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="系统版本">v1.0.0</el-descriptions-item>
+              <el-descriptions-item label="知识图谱版本">v2.0</el-descriptions-item>
+              <el-descriptions-item label="当前时间">{{ currentTime }}</el-descriptions-item>
+              <el-descriptions-item label="登录身份">{{ loginTypeText }}</el-descriptions-item>
+            </el-descriptions>
+          </el-card>
+        </el-col>
+      </el-row>
+    </template>
   </div>
 </template>
 
@@ -61,6 +70,9 @@ defineOptions({ name: 'HomeIndex' })
 
 const router = useRouter()
 const userStore = useUserStore()
+
+// 加载状态
+const loading = ref(true)
 
 // 用户昵称
 const nickname = computed(() => userStore.getUser?.nickname || '用户')
@@ -153,7 +165,23 @@ const goToPage = (path: string) => {
   router.push(path)
 }
 
-onMounted(() => {
+// 初始化用户信息
+const initUserInfo = async () => {
+  loading.value = true
+  try {
+    // 如果 store 中没有用户信息，则获取
+    if (!userStore.getUser?.nickname) {
+      await userStore.setUserInfoAction()
+    }
+  } catch (error) {
+    console.error('获取用户信息失败', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(async () => {
+  await initUserInfo()
   updateTime()
   timer = setInterval(updateTime, 1000)
 })
@@ -166,6 +194,34 @@ onUnmounted(() => {
 <style scoped>
 .home-container {
   padding: 20px;
+}
+
+/* 加载动画 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+}
+
+.circle-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e4e7ed;
+  border-top-color: #409eff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-text {
+  margin-top: 16px;
+  color: #909399;
+  font-size: 14px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .welcome-card {

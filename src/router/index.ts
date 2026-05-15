@@ -30,7 +30,7 @@ const getDefaultHomePath = (): string => {
   return '/home'  // 所有人都跳转到首页
 }
 
-// ✅ 修改：获取用户角色（用于后端权限，不用于前端菜单）
+// 修改：获取用户角色（用于后端权限，不用于前端菜单）
 // const getUserRoles = (): string[] => {
 //   try {
 //     const userStr = localStorage.getItem('userInfo') || sessionStorage.getItem('userInfo')
@@ -50,7 +50,7 @@ const getDefaultHomePath = (): string => {
 //   return []
 // }
 
-// ✅ 新增：获取登录身份（用于前端菜单和路由权限）
+// 新增：获取登录身份（用于前端菜单和路由权限）
 const getLoginType = (): string => {
   return localStorage.getItem('loginType') || 'user'
 }
@@ -99,7 +99,7 @@ const needAuth = to.path.startsWith('/home') ||
   
   if (needAuth) {
     if (token) {
-      // ✅ 关键修改：使用 loginType 判断管理员权限，而不是 getUserRoles
+      // 关键修改：使用 loginType 判断管理员权限，而不是 getUserRoles
       const loginType = getLoginType()
       const isAdmin = loginType === 'admin'
       
