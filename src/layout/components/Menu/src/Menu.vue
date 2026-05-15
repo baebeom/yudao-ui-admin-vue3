@@ -7,29 +7,27 @@
     class="app-sidebar-menu"
     background-color="#ffffff"
     text-color="#303133"
-    active-text-color="#409eff" 
+    active-text-color="#409eff"
   >
-    <template v-for="route in menuRoutes" :key="route.path">
+    <template v-for="item in menuRoutes" :key="item.path">
 
       <!-- 多个子菜单：显示下拉 -->
       <el-sub-menu
-        v-if="route.children && route.children.length > 1"
-        :index="route.path"
+        v-if="item.children && item.children.length > 1"
+        :index="item.path"
       >
         <template #title>
-          <el-icon v-if="route.meta?.icon">
-            <component :is="route.meta.icon" />
+          <el-icon v-if="item.meta?.icon">
+            <component :is="item.meta.icon" />
           </el-icon>
-
-          <span>{{ route.meta?.title }}</span>
+          <span>{{ item.meta?.title }}</span>
         </template>
 
-        <template v-for="child in route.children" :key="child.path">
-          <el-menu-item :index="getFullPath(route.path, child.path)">
+        <template v-for="child in item.children" :key="child.path">
+          <el-menu-item :index="getFullPath(item.path, child.path)">
             <el-icon v-if="child.meta?.icon">
               <component :is="child.meta.icon" />
             </el-icon>
-
             <template #title>
               <span>{{ child.meta?.title }}</span>
             </template>
@@ -39,26 +37,24 @@
 
       <!-- 只有一个子菜单：直接显示 -->
       <el-menu-item
-        v-else-if="route.children && route.children.length === 1"
-        :index="getFullPath(route.path, route.children[0].path)"
+        v-else-if="item.children && item.children.length === 1"
+        :index="getFullPath(item.path, item.children[0].path)"
       >
-        <el-icon v-if="route.children[0].meta?.icon">
-          <component :is="route.children[0].meta.icon" />
+        <el-icon v-if="item.children[0].meta?.icon">
+          <component :is="item.children[0].meta.icon" />
         </el-icon>
-
         <template #title>
-          <span>{{ route.children[0].meta?.title }}</span>
+          <span>{{ item.children[0].meta?.title }}</span>
         </template>
       </el-menu-item>
 
       <!-- 无子菜单 -->
-      <el-menu-item v-else :index="route.path">
-        <el-icon v-if="route.meta?.icon">
-          <component :is="route.meta.icon" />
+      <el-menu-item v-else :index="item.path">
+        <el-icon v-if="item.meta?.icon">
+          <component :is="item.meta.icon" />
         </el-icon>
-
         <template #title>
-          <span>{{ route.meta?.title }}</span>
+          <span>{{ item.meta?.title }}</span>
         </template>
       </el-menu-item>
 
@@ -75,86 +71,63 @@ import remainingRouter from '@/router/modules/remaining'
 const route = useRoute()
 const appStore = useAppStore()
 
-// 获取登录身份
-const getLoginType = (): string => {
+// 获取当前用户角色列表（从 localStorage.userRoles 读取）
+const getUserRoles = (): string[] => {
   try {
-    const loginType = localStorage.getItem('loginType')
-    return loginType || 'user'
+    const rolesStr = localStorage.getItem('userRoles')
+    if (rolesStr) {
+      const roles = JSON.parse(rolesStr)
+      return Array.isArray(roles) ? roles : []
+    }
   } catch (e) {
-    return 'user'
+    console.error('解析用户角色失败', e)
   }
+  return []
 }
 
-const loginType = getLoginType()
+const userRoles = getUserRoles()
+
+// 权限判断：路由要求的角色与用户角色是否有交集
+const hasRolePermission = (item: any): boolean => {
+  const routeRoles = item.meta?.roles
+  if (!routeRoles || !Array.isArray(routeRoles)) return false
+  // 如果用户角色为空，默认赋予 common（防止空白）
+  const roles = userRoles.length ? userRoles : ['common']
+  return routeRoles.some(role => roles.includes(role))
+}
 
 // 拼接完整路径
 const getFullPath = (parentPath: string, childPath: string) => {
   if (childPath.startsWith('/')) {
     return childPath
   }
-
   return `${parentPath}/${childPath}`
 }
 
-// 权限判断
-const hasRolePermission = (route: any): boolean => {
-  const routeRoles = route.meta?.roles
-
-  if (!routeRoles) return false
-
-  if (!Array.isArray(routeRoles)) return false
-
-  const userRole = loginType === 'admin'
-    ? 'super_admin'
-    : 'common'
-
-  return routeRoles.includes(userRole)
-}
-
-// 过滤路由
+// 过滤路由（隐藏、系统路由、权限）
 const filterRoutes = (routes: any[]): any[] => {
   const result: any[] = []
 
-  for (const route of routes) {
-
+  for (const item of routes) {
     // 隐藏路由
-    if (route.meta?.hidden === true) {
-      continue
-    }
+    if (item.meta?.hidden === true) continue
 
     // 排除系统路由
-    if (
-      route.path === '/' ||
-      route.path === '/login' ||
-      route.path === '/404'
-    ) {
-      continue
-    }
+    if (['/', '/login', '/404'].includes(item.path)) continue
 
     // 权限判断
-    if (!hasRolePermission(route)) {
-      continue
-    }
+    if (!hasRolePermission(item)) continue
 
     // 子路由过滤
-    if (route.children && route.children.length > 0) {
-
-      const filteredChildren = filterRoutes(route.children)
-
+    if (item.children && item.children.length > 0) {
+      const filteredChildren = filterRoutes(item.children)
       if (filteredChildren.length > 0) {
-        result.push({
-          ...route,
-          children: filteredChildren
-        })
+        result.push({ ...item, children: filteredChildren })
       }
-
     } else {
-
-      result.push(route)
-
+      result.push(item)
     }
   }
-
   return result
 }
 
@@ -166,16 +139,13 @@ const menuRoutes = computed(() => {
 // 当前激活菜单
 const activeMenu = computed(() => {
   const { path, meta } = route
-
-  return (meta as any)?.activeMenu
-    ? (meta as any).activeMenu
-    : path
+  return (meta as any)?.activeMenu || path
 })
 </script>
 
 <style scoped>
 .app-sidebar-menu {
-  border-right: none;
   height: 100%;
+  border-right: none;
 }
 </style>

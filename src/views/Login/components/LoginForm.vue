@@ -131,6 +131,7 @@
 </template>
 
 <script lang="ts" setup>
+import { CACHE_KEY, useCache } from '@/hooks/web/useCache' // 添加缓存工具
 import { ElLoading } from 'element-plus'
 import { User, Setting } from '@element-plus/icons-vue'
 import LoginFormTitle from './LoginFormTitle.vue'
@@ -141,6 +142,7 @@ import { useIcon } from '@/hooks/web/useIcon'
 import * as authUtil from '@/utils/auth'
 import * as LoginApi from '@/api/login'
 import { LoginStateEnum, useFormValid, useLoginState } from './useLogin'
+import { useUserStore } from '@/store/modules/user'
 
 defineOptions({ name: 'LoginForm' })
 
@@ -236,19 +238,18 @@ const getTenantByWebsite = async () => {
 
 const loading = ref()
 
-// 登录
 const handleLogin = async (params: any) => {
   loginLoading.value = true
   try {
     await getTenantId()
     const data = await validForm()
     if (!data) return
-    
+
     const loginDataLoginForm = { ...loginData.loginForm }
     loginDataLoginForm.captchaVerification = params.captchaVerification
     const res = await LoginApi.login(loginDataLoginForm)
     if (!res) return
-    
+
     loading.value = ElLoading.service({
       lock: true,
       text: '正在加载系统中...',
@@ -266,10 +267,32 @@ const handleLogin = async (params: any) => {
     try {
       const permissionInfo = await LoginApi.getInfo()
       console.log('获取到的用户信息:', permissionInfo)
+      const userStore = useUserStore()
+      userStore.permissions = new Set(permissionInfo.permissions || [])
+      userStore.roles = permissionInfo.roles || []   // 此时 roles 已包含 'admin'
+      userStore.user = permissionInfo.user || {}
+      userStore.isSetUser = true
+
+      const { wsCache } = useCache()
+      wsCache.set(CACHE_KEY.USER, permissionInfo)
+
+      //根据登录接口的 userType 强制确定角色
+      let roles = permissionInfo?.roles || []
+      const isAdmin = res.userType === 'ADMIN'
       
-      const roles = permissionInfo?.roles || ['common']
+      if (isAdmin) {
+        // 确保 roles 中包含 'admin'（不区分大小写，统一用小写存储）
+        if (!roles.some((r: string) => r.toLowerCase() === 'admin')) {
+          roles.push('admin')
+          console.log('根据 userType 补充 admin 角色')
+        }
+      } else if (roles.length === 0) {
+        // 非管理员且 roles 为空时给默认角色
+        roles = ['common']
+      }
+      
       localStorage.setItem('userRoles', JSON.stringify(roles))
-      
+
       if (permissionInfo?.user) {
         const userInfo = {
           id: permissionInfo.user.id,
@@ -278,24 +301,27 @@ const handleLogin = async (params: any) => {
           avatar: permissionInfo.user.avatar || '',
           mobile: permissionInfo.user.mobile || '',
           email: permissionInfo.user.email || '',
-          createTime: permissionInfo.user.createTime
+          createTime: permissionInfo.user.createTime,
+          userType: res.userType // 额外存储 userType 备用
         }
         localStorage.setItem('userInfo', JSON.stringify(userInfo))
       }
     } catch (error) {
       console.error('获取用户信息失败', error)
+      // 如果获取用户信息接口失败，至少根据登录接口的 userType 存储一个基础角色
+      const fallbackRoles = res.userType === 'ADMIN' ? ['admin'] : ['common']
+      localStorage.setItem('userRoles', JSON.stringify(fallbackRoles))
     }
-    
-    // 根据后端返回的 redirectUrl 跳转，若不存在则根据 userType 或默认逻辑
+
+    // 根据后端返回的 redirectUrl 跳转，若不存在则根据 userType 决定
     let targetPath = ''
     if (res.redirectUrl) {
       targetPath = res.redirectUrl
     } else {
-      // 根据 userType 决定跳转：ADMIN -> 后台，其他 -> 前台首页
       const userType = res.userType || 'NORMAL'
-      targetPath = userType === 'ADMIN' ? '/admin/dashboard' : '/user/home'
+      targetPath = userType === 'ADMIN' ? '/admin' : '/home'
     }
-    
+
     await push({ path: targetPath })
 
   } finally {

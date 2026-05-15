@@ -7,7 +7,7 @@ export function hasRole(app: App<Element>) {
   app.directive('hasRole', (el, binding) => {
     const { wsCache } = useCache()
     const { value } = binding
-    const super_admin = 'super_admin'
+    const admin = 'admin'
     const userInfo = wsCache.get(CACHE_KEY.USER)
     const roles = userInfo?.roles || []
 
@@ -15,7 +15,7 @@ export function hasRole(app: App<Element>) {
       const roleFlag = value
 
       const hasRole = roles.some((role: string) => {
-        return super_admin === role || roleFlag.includes(role)
+        return admin === role || roleFlag.includes(role)
       })
 
       if (!hasRole) {

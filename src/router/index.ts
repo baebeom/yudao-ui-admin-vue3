@@ -50,9 +50,13 @@ const getDefaultHomePath = (): string => {
 //   return []
 // }
 
-// 新增：获取登录身份（用于前端菜单和路由权限）
 const getLoginType = (): string => {
-  return localStorage.getItem('loginType') || 'user'
+  try {
+    const roles = JSON.parse(localStorage.getItem('userRoles') || '[]')
+    return roles.includes('admin') ? 'admin' : 'user'
+  } catch {
+    return 'user'
+  }
 }
 
 router.beforeEach(async (to, _from, next) => {

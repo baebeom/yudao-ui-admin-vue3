@@ -10,7 +10,7 @@ const homeRoute: RouteRecordRaw = {
     icon: 'home',
     hidden: false,
     noTagsView: false,
-    roles: ['common', 'super_admin']
+    roles: ['common', 'admin']
   },
   children: [
     {
@@ -21,9 +21,9 @@ const homeRoute: RouteRecordRaw = {
         title: '首页',
         requiresAuth: true,
         icon: 'home',
-        activeMenu: '/home',
+        activeMenu: '/home/index',
         noTagsView: false,
-        roles: ['common', 'super_admin']
+        roles: ['common', 'admin']
       }
     }
   ]
@@ -39,7 +39,7 @@ const graphRoute: RouteRecordRaw = {
     icon: 'chat-dot-round',
     hidden: false,
     noTagsView: false,
-    roles: ['common', 'super_admin']
+    roles: ['common', 'admin']
   },
   children: [
     {
@@ -52,7 +52,7 @@ const graphRoute: RouteRecordRaw = {
         icon: 'chat-dot-round',
         activeMenu: '/graph/chat',
         noTagsView: false,
-        roles: ['common', 'super_admin']
+        roles: ['common', 'admin']
       }
     },
     {
@@ -65,7 +65,7 @@ const graphRoute: RouteRecordRaw = {
         icon: 'share',
         activeMenu: '/graph/map',
         noTagsView: false,
-        roles: ['common', 'super_admin']
+        roles: ['common', 'admin']
       }
     }
   ]
@@ -81,7 +81,7 @@ const adminRoute: RouteRecordRaw = {
     icon: 'management',
     hidden: false,
     noTagsView: false,
-    roles: ['super_admin']
+    roles: ['admin']
   },
   children: [
     {
@@ -94,7 +94,7 @@ const adminRoute: RouteRecordRaw = {
         icon: 'chat-line-round',
         activeMenu: '/admin/conversation',
         noTagsView: false,
-        roles: ['super_admin']
+        roles: ['admin']
       }
     },
     {
@@ -107,7 +107,7 @@ const adminRoute: RouteRecordRaw = {
         icon: 'database',
         activeMenu: '/admin/database',
         noTagsView: false,
-        roles: ['super_admin']
+        roles: ['admin']
       }
     },
     {
@@ -120,7 +120,7 @@ const adminRoute: RouteRecordRaw = {
         icon: 'user',
         activeMenu: '/admin/user',
         noTagsView: false,
-        roles: ['super_admin']
+        roles: ['admin']
       }
     }
   ]
@@ -136,7 +136,7 @@ const profileRoute: RouteRecordRaw = {
     icon: 'setting',
     hidden: false,
     noTagsView: false,
-    roles: ['common', 'super_admin']
+    roles: ['common', 'admin']
   },
   children: [
     {
@@ -149,7 +149,7 @@ const profileRoute: RouteRecordRaw = {
         icon: 'setting',
         activeMenu: '/profile/index',
         noTagsView: false,
-        roles: ['common', 'super_admin']
+        roles: ['common', 'admin']
       }
     }
   ]
