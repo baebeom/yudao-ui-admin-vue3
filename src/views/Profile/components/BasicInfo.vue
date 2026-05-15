@@ -1,124 +1,107 @@
 <template>
-  <Form ref="formRef" :labelWidth="200" :rules="rules" :schema="schema">
-    <template #sex="form">
-      <el-radio-group v-model="form['sex']">
-        <el-radio :value="1">{{ t('profile.user.man') }}</el-radio>
-        <el-radio :value="2">{{ t('profile.user.woman') }}</el-radio>
-      </el-radio-group>
-    </template>
-  </Form>
-  <div style="text-align: center">
-    <XButton :title="t('common.save')" type="primary" @click="submit()" />
-    <XButton :title="t('common.reset')" type="danger" @click="init()" />
-  </div>
+  <el-form ref="formRef" :model="formModel" label-width="100px" :rules="rules">
+    <el-form-item label="用户名" prop="username">
+      <el-input v-model="formModel.username" disabled />
+    </el-form-item>
+    <el-form-item label="昵称" prop="nickname">
+      <el-input v-model="formModel.nickname" />
+    </el-form-item>
+    <el-form-item label="手机号" prop="mobile">
+      <el-input v-model="formModel.mobile" />
+    </el-form-item>
+    <el-form-item label="邮箱" prop="email">
+      <el-input v-model="formModel.email" />
+    </el-form-item>
+    <el-form-item>
+      <el-button type="primary" @click="submit">保存修改</el-button>
+    </el-form-item>
+  </el-form>
 </template>
 
 <script lang="ts" setup>
-import type { FormRules } from 'element-plus'
-import { FormSchema } from '@/types/form'
-import type { FormExpose } from '@/components/Form'
-import {
-  getUserProfile,
-  updateUserProfile,
-  UserProfileUpdateReqVO
-} from '@/api/system/user/profile'
+import { ref, watch, onMounted } from 'vue'
+import type { FormInstance, FormRules } from 'element-plus'
 import { useUserStore } from '@/store/modules/user'
-
-defineOptions({ name: 'BasicInfo' })
+import { updateUserProfile } from '@/api/system/user/profile'
+import { useMessage } from '@/hooks/web/useMessage'
+import { useI18n } from '@/hooks/web/useI18n'
 
 const { t } = useI18n()
-const message = useMessage()
+const { success, error } = useMessage()
 const userStore = useUserStore()
+const formRef = ref<FormInstance>()  // ✅ 改为 Element Plus 的 FormInstance 类型
+const emit = defineEmits(['success'])
 
-// 定义事件
-const emit = defineEmits<{
-  (e: 'success'): void
-}>()
-
-// 表单校验
-const rules = reactive<FormRules>({
-  nickname: [{ required: true, message: t('profile.rules.nickname'), trigger: 'blur' }],
-  mobile: [
-    { required: true, message: t('profile.rules.phone'), trigger: 'blur' },
-    {
-      pattern: /^1[3-9]\d{9}$/,
-      message: t('profile.rules.truephone'),
-      trigger: 'blur'
-    }
-  ],
-  email: [
-    { required: false, message: t('profile.rules.mail'), trigger: 'blur' },
-    {
-      type: 'email',
-      message: t('profile.rules.truemail'),
-      trigger: ['blur', 'change']
-    }
-  ]
+const formModel = ref({
+  username: '',
+  nickname: '',
+  mobile: '',
+  email: ''
 })
 
-const schema = reactive<FormSchema[]>([
-  {
-    field: 'username',
-    label: '登录账号',
-    component: 'Input',
-    componentProps: {
-      disabled: true
-    }
-  },
-  {
-    field: 'nickname',
-    label: '用户昵称',
-    component: 'Input'
-  },
-  {
-    field: 'mobile',
-    label: '手机号码',
-    component: 'Input'
-  },
-  {
-    field: 'email',
-    label: '电子邮箱',
-    component: 'Input'
-  }
-])
-
-const formRef = ref<FormExpose>()
-
-// 监听 userStore 中头像的变化，同步更新表单数据
+// 监听 store 变化，更新表单
 watch(
-  () => userStore.getUser.avatar,
-  (newAvatar) => {
-    if (newAvatar && formRef.value) {
-      const formModel = formRef.value.formModel
-      if (formModel) {
-        formModel.avatar = newAvatar
+  () => userStore.getUser,
+  (newUser) => {
+    if (newUser) {
+      formModel.value = {
+        username: newUser.username || '',
+        nickname: newUser.nickname || '',
+        mobile: newUser.mobile || '',
+        email: newUser.email || ''
       }
+      console.log('表单已更新:', formModel.value)
     }
-  }
+  },
+  { deep: true, immediate: true }
 )
 
-const submit = () => {
-  const elForm = unref(formRef)?.getElFormRef()
-  if (!elForm) return
-  elForm.validate(async (valid) => {
-    if (valid) {
-      const data = unref(formRef)?.formModel as UserProfileUpdateReqVO
-      await updateUserProfile(data)
-      message.success(t('common.updateSuccess'))
-      const profile = await init()
-      await userStore.setUserNicknameAction(profile.nickname)
+onMounted(() => {
+  const user = userStore.getUser
+  if (user) {
+    formModel.value = {
+      username: user.username || '',
+      nickname: user.nickname || '',
+      mobile: user.mobile || '',
+      email: user.email || ''
+    }
+    console.log('onMounted 加载表单数据:', formModel.value)
+  }
+})
+
+const rules: FormRules = {
+  nickname: [{ required: true, message: '昵称不能为空', trigger: 'blur' }],
+  mobile: [
+    { required: true, message: '手机号不能为空', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
+  ],
+  email: [
+    { required: true, message: '邮箱不能为空', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+  ]
+}
+
+const submit = async () => {
+  if (!formRef.value) return
+  
+  // ✅ 使用 Element Plus 原生的 validate 方法
+  formRef.value.validate(async (valid) => {
+    if (!valid) return
+
+    try {
+      const payload = {
+        nickname: formModel.value.nickname,
+        mobile: formModel.value.mobile,
+        email: formModel.value.email
+      }
+      await updateUserProfile(payload)
+      success(t('common.updateSuccess'))
+      userStore.updateUserProfile(payload)
       emit('success')
+    } catch (err) {
+      error('修改失败')
+      console.error(err)
     }
   })
 }
-
-const init = async () => {
-  const res = await getUserProfile()
-  unref(formRef)?.setValues(res)
-  return res
-}
-
-onMounted(async () => {
-  await init()
-})
 </script>

@@ -49,6 +49,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/store/modules/user'
 import {
   ChatDotRound,
   Share,
@@ -59,39 +60,22 @@ import {
 defineOptions({ name: 'HomeIndex' })
 
 const router = useRouter()
+const userStore = useUserStore()
 
-// 用户信息
-const userInfo = ref<any>(null)
+// 用户昵称
+const nickname = computed(() => userStore.getUser?.nickname || '用户')
 
-// 加载用户信息
-const loadUserInfo = () => {
-  try {
-    const info = localStorage.getItem('userInfo')
-    if (info) {
-      userInfo.value = JSON.parse(info)
-      console.log('加载用户信息:', userInfo.value)
-    }
-  } catch (e) {
-    console.error('获取用户信息失败', e)
-  }
-}
-
-// 昵称
-const nickname = computed(() => {
-  return userInfo.value?.nickname || userInfo.value?.user?.nickname || '用户'
-})
-
-// 头像
+// 头像：优先使用用户上传的头像，否则使用 DiceBear 默认头像
 const avatarUrl = computed(() => {
-  const avatar = userInfo.value?.avatar || userInfo.value?.user?.avatar
-  if (avatar && avatar !== '') {
-    return avatar
+  const userAvatar = userStore.getUser?.avatar
+  if (userAvatar && userAvatar !== '') {
+    return userAvatar
   }
   const name = nickname.value || 'user'
   return `https://api.dicebear.com/9.x/pixel-art/svg?seed=${name}&backgroundType=gradientLinear&backgroundColor=b6e3f4&radius=50`
 })
 
-// 登录身份
+// 登录身份（admin / user）
 const loginType = localStorage.getItem('loginType') || 'user'
 const loginTypeText = loginType === 'admin' ? '管理员' : '普通用户'
 
@@ -99,7 +83,7 @@ const loginTypeText = loginType === 'admin' ? '管理员' : '普通用户'
 const currentTime = ref('')
 let timer: ReturnType<typeof setInterval> | null = null
 
-// 快捷入口
+// 快捷入口配置
 const getQuickEntries = () => {
   const baseEntries = [
     {
@@ -169,23 +153,13 @@ const goToPage = (path: string) => {
   router.push(path)
 }
 
-// 监听 storage 变化
-const handleStorageChange = (event: StorageEvent) => {
-  if (event.key === 'userInfo') {
-    loadUserInfo()
-  }
-}
-
 onMounted(() => {
-  loadUserInfo()
   updateTime()
   timer = setInterval(updateTime, 1000)
-  window.addEventListener('storage', handleStorageChange)
 })
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
-  window.removeEventListener('storage', handleStorageChange)
 })
 </script>
 

@@ -161,7 +161,8 @@ const registerRules: FormRules = {
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
   ],
   email: [
-    { required: false, trigger: 'blur', message: '请输入电子邮箱' }
+    { required: true, trigger: 'blur', message: '请输入电子邮箱' },       
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }  
   ]
 }
 
