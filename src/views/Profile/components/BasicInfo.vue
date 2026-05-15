@@ -13,7 +13,9 @@
       <el-input v-model="formModel.email" />
     </el-form-item>
     <el-form-item>
-      <el-button type="primary" @click="submit">保存修改</el-button>
+      <div style="display: flex; justify-content: center; width: calc(100% + 100px); margin-left: -100px;">
+        <el-button type="primary" @click="submit">保存修改</el-button>
+      </div>
     </el-form-item>
   </el-form>
 </template>
@@ -29,7 +31,7 @@ import { useI18n } from '@/hooks/web/useI18n'
 const { t } = useI18n()
 const { success, error } = useMessage()
 const userStore = useUserStore()
-const formRef = ref<FormInstance>()  // ✅ 改为 Element Plus 的 FormInstance 类型
+const formRef = ref<FormInstance>()
 const emit = defineEmits(['success'])
 
 const formModel = ref({
@@ -84,7 +86,6 @@ const rules: FormRules = {
 const submit = async () => {
   if (!formRef.value) return
   
-  // ✅ 使用 Element Plus 原生的 validate 方法
   formRef.value.validate(async (valid) => {
     if (!valid) return
 

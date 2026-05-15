@@ -15,12 +15,14 @@
 import { ref, computed, onMounted } from 'vue'
 import UserAvatar from './UserAvatar.vue'
 import { getUserProfile } from '@/api/system/user/profile'
+import { useUserStore } from '@/store/modules/user'  // ✅ 导入 store
 
 defineOptions({ name: 'ProfileUser' })
 
+const userStore = useUserStore()  // ✅ 获取 store 实例
 const userInfo = ref<any>(null)
 
-// 格式化注册时间（后端返回的是毫秒时间戳）
+// 格式化注册时间
 const formatCreateTime = computed(() => {
   const timestamp = userInfo.value?.createTime
   if (!timestamp) return '-'
@@ -38,9 +40,23 @@ const formatCreateTime = computed(() => {
 const fetchUserInfo = async () => {
   try {
     const res = await getUserProfile()
-    // 兼容不同的返回结构：res.data 或 res 直接是数据
-    userInfo.value = res?.data || res
-    console.log('ProfileUser 加载数据:', userInfo.value)
+    const data = res?.data || res
+    userInfo.value = data
+    console.log('ProfileUser 加载数据:', data)
+    
+    // ✅ 关键：将完整数据同步到 userStore
+    if (data) {
+      userStore.updateUserProfile({
+        id: data.id,
+        username: data.username,
+        nickname: data.nickname,
+        mobile: data.mobile,
+        email: data.email,
+        avatar: data.avatar,
+        createTime: data.createTime
+      })
+      console.log('已同步到 store，当前 store:', userStore.getUser)
+    }
   } catch (error) {
     console.error('获取用户信息失败', error)
   }
@@ -57,5 +73,25 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 可选样式 */
+.list-group-striped > .list-group-item {
+  padding-right: 0;
+  padding-left: 0;
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
+}
+.list-group {
+  padding-left: 0;
+  list-style: none;
+}
+.list-group-item {
+  padding: 11px 0;
+  margin-bottom: -1px;
+  font-size: 13px;
+  border-top: 1px solid #e7eaec;
+  border-bottom: 1px solid #e7eaec;
+}
+.pull-right {
+  float: right !important;
+}
 </style>
