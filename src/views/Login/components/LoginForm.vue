@@ -133,7 +133,6 @@
 <script lang="ts" setup>
 import { CACHE_KEY, useCache } from '@/hooks/web/useCache' // 添加缓存工具
 import { ElLoading } from 'element-plus'
-import { User, Setting } from '@element-plus/icons-vue'
 import LoginFormTitle from './LoginFormTitle.vue'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 
@@ -269,19 +268,24 @@ const handleLogin = async (params: any) => {
       console.log('获取到的用户信息:', permissionInfo)
       const userStore = useUserStore()
       userStore.permissions = new Set(permissionInfo.permissions || [])
-      userStore.roles = permissionInfo.roles || []   // 此时 roles 已包含 'admin'
+      userStore.roles = permissionInfo.roles || []
       userStore.user = permissionInfo.user || {}
       userStore.isSetUser = true
 
       const { wsCache } = useCache()
       wsCache.set(CACHE_KEY.USER, permissionInfo)
 
-      //根据登录接口的 userType 强制确定角色
-      let roles = permissionInfo?.roles || []
+      // 根据登录接口的 userType 设置 loginType
       const isAdmin = res.userType === 'ADMIN'
+      const loginType = isAdmin ? 'admin' : 'user'
+      localStorage.setItem('loginType', loginType)
+      console.log('设置 loginType:', loginType)
+
+      // 根据登录接口的 userType 强制确定角色
+      let roles = permissionInfo?.roles || []
       
       if (isAdmin) {
-        // 确保 roles 中包含 'admin'（不区分大小写，统一用小写存储）
+        // 确保 roles 中包含 'admin'
         if (!roles.some((r: string) => r.toLowerCase() === 'admin')) {
           roles.push('admin')
           console.log('根据 userType 补充 admin 角色')
@@ -302,7 +306,7 @@ const handleLogin = async (params: any) => {
           mobile: permissionInfo.user.mobile || '',
           email: permissionInfo.user.email || '',
           createTime: permissionInfo.user.createTime,
-          userType: res.userType // 额外存储 userType 备用
+          userType: res.userType
         }
         localStorage.setItem('userInfo', JSON.stringify(userInfo))
       }
@@ -311,18 +315,16 @@ const handleLogin = async (params: any) => {
       // 如果获取用户信息接口失败，至少根据登录接口的 userType 存储一个基础角色
       const fallbackRoles = res.userType === 'ADMIN' ? ['admin'] : ['common']
       localStorage.setItem('userRoles', JSON.stringify(fallbackRoles))
+      
+      // 同时也设置 loginType
+      const loginType = res.userType === 'ADMIN' ? 'admin' : 'user'
+      localStorage.setItem('loginType', loginType)
+      console.log('设置 loginType (fallback):', loginType)
     }
 
-    // 根据后端返回的 redirectUrl 跳转，若不存在则根据 userType 决定
-    let targetPath = ''
-    if (res.redirectUrl) {
-      targetPath = res.redirectUrl
-    } else {
-      const userType = res.userType || 'NORMAL'
-      targetPath = userType === 'ADMIN' ? '/admin' : '/home'
-    }
-
-    await push({ path: targetPath })
+    // ✅ 修改：统一跳转到主页 /home
+    // 无论管理员还是普通用户，都进入主页
+    await push({ path: '/home' })
 
   } finally {
     loginLoading.value = false

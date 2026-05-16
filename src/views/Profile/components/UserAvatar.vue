@@ -23,7 +23,6 @@ import { ElMessage } from 'element-plus'
 defineOptions({ name: 'UserAvatar' })
 
 const userStore = useUserStore()
-const cropperRef = ref()
 
 // 获取用户昵称（用于生成默认头像）
 const userName = computed(() => userStore.getUser?.nickname || '用户')

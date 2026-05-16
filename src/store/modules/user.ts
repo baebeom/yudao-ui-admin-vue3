@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { getAccessToken, removeToken } from '@/utils/auth'
 import { CACHE_KEY, useCache, deleteUserCache } from '@/hooks/web/useCache'
 import { getInfo, loginOut } from '@/api/login'
-import { getUserProfile } from '@/api/system/user/profile'  // ✅ 导入
+import { getUserProfile } from '@/api/system/user/profile'
 
 const { wsCache } = useCache()
 
@@ -70,7 +70,6 @@ export const useUserStore = defineStore('admin-user', {
       this.user = userInfo.user
       this.isSetUser = true
       
-      // ✅ 补充手机号、邮箱等完整信息
       try {
         const profileRes = await getUserProfile()
         const profile = profileRes?.data || profileRes
@@ -116,10 +115,30 @@ export const useUserStore = defineStore('admin-user', {
       }
     },
     async loginOut() {
-      await loginOut()
+      try {
+        // 调用后端退出接口（可选）
+        await loginOut()
+      } catch (error) {
+        console.error('退出接口调用失败', error)
+      }
+      
+      // 清除 token
       removeToken()
+      
+      // 清除用户缓存
       deleteUserCache()
+      
+      // 清除 loginType
+      localStorage.removeItem('loginType')
+      localStorage.removeItem('userRoles')
+      localStorage.removeItem('userInfo')
+      
+      // 重置 store 状态
       this.resetState()
+      
+      // ✅ 关键：跳转到登录页
+      // 使用 window.location 确保彻底刷新
+      window.location.href = '/login'
     },
     resetState() {
       this.permissions = new Set<string>()

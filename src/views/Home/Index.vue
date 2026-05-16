@@ -77,7 +77,7 @@ const loading = ref(true)
 // 用户昵称
 const nickname = computed(() => userStore.getUser?.nickname || '用户')
 
-// 头像：优先使用用户上传的头像，否则使用 DiceBear 默认头像
+// 头像
 const avatarUrl = computed(() => {
   const userAvatar = userStore.getUser?.avatar
   if (userAvatar && userAvatar !== '') {
@@ -87,16 +87,20 @@ const avatarUrl = computed(() => {
   return `https://api.dicebear.com/9.x/pixel-art/svg?seed=${name}&backgroundType=gradientLinear&backgroundColor=b6e3f4&radius=50`
 })
 
-// 登录身份（admin / user）
-const loginType = localStorage.getItem('loginType') || 'user'
-const loginTypeText = loginType === 'admin' ? '管理员' : '普通用户'
+// 登录身份文本
+const loginTypeText = computed(() => {
+  const loginType = localStorage.getItem('loginType') || 'user'
+  return loginType === 'admin' ? '管理员' : '普通用户'
+})
 
 // 当前时间
 const currentTime = ref('')
 let timer: ReturnType<typeof setInterval> | null = null
 
-// 快捷入口配置
-const getQuickEntries = () => {
+// ✅ 快捷入口 - 使用计算属性
+const quickEntries = computed(() => {
+  const loginType = localStorage.getItem('loginType') || 'user'
+  
   const baseEntries = [
     {
       title: '智能问答',
@@ -114,39 +118,29 @@ const getQuickEntries = () => {
     }
   ]
   
-  if (loginType === 'admin') {
-    return [
-      ...baseEntries,
-      {
-        title: '后台管理',
-        desc: '系统管理功能',
-        path: '/admin/conversation',
-        icon: Management,
-        color: '#F56C6C'
-      },
-      {
-        title: '个人资料',
-        desc: '查看修改个人信息',
-        path: '/profile/index',
-        icon: Setting,
-        color: '#E6A23C'
-      }
-    ]
-  } else {
-    return [
-      ...baseEntries,
-      {
-        title: '个人资料',
-        desc: '查看修改个人信息',
-        path: '/profile/index',
-        icon: Setting,
-        color: '#E6A23C'
-      }
-    ]
+  const adminEntry = {
+    title: '后台管理',
+    desc: '系统管理功能',
+    path: '/admin/conversation',
+    icon: Management,
+    color: '#F56C6C'
   }
-}
-
-const quickEntries = getQuickEntries()
+  
+  const profileEntry = {
+    title: '个人资料',
+    desc: '查看修改个人信息',
+    path: '/profile/index',
+    icon: Setting,
+    color: '#E6A23C'
+  }
+  
+  // 根据登录类型返回不同的入口
+  if (loginType === 'admin') {
+    return [...baseEntries, adminEntry, profileEntry]
+  } else {
+    return [...baseEntries, profileEntry]
+  }
+})
 
 // 更新时间
 const updateTime = () => {
@@ -169,7 +163,6 @@ const goToPage = (path: string) => {
 const initUserInfo = async () => {
   loading.value = true
   try {
-    // 如果 store 中没有用户信息，则获取
     if (!userStore.getUser?.nickname) {
       await userStore.setUserInfoAction()
     }
