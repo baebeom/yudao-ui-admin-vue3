@@ -39,7 +39,7 @@
         </el-form-item>
       </el-col>
 
-      <el-col :span="24" class="px-10px mt-[-20px] mb-[-20px]">
+      <el-col :span="24" class="px-10px">
         <el-form-item>
           <el-row justify="space-between" style="width: 100%">
             <el-col :span="6">

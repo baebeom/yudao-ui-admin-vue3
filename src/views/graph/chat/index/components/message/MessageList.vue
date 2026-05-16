@@ -4,7 +4,7 @@
       <!-- 靠左 message：system、assistant 类型 -->
       <div class="flex flex-row mt-50px" v-if="item.type !== 'user'">
         <div class="avatar">
-          <el-avatar :src="roleAvatar" />
+          <el-avatar :size="32" :src="roleAvatar" class="ai-avatar" />
         </div>
         <div class="flex flex-col text-left mx-15px flex-1 min-w-0">
           <div>
@@ -150,10 +150,9 @@ import { ChatMessageApi, ChatMessageVO } from '@/api/graph/chat/message'
 import { ChatConversationVO } from '@/api/graph/chat/conversation'
 import { useUserStore } from '@/store/modules/user'
 import * as echarts from 'echarts'
-import userAvatarDefaultImg from '@/assets/imgs/avatar.gif'
-import roleAvatarDefaultImg from '@/assets/ai/gpt.svg'
+// import roleAvatarDefaultImg from '@/assets/ai/gpt.svg'
+import aiRobotIcon from '@/assets/ai/ai-robot.svg'
 import { ElMessage } from 'element-plus'
-
 
 const message = ElMessage
 const { copy } = useClipboard({ legacy: true })
@@ -167,8 +166,18 @@ const isScrolling = ref(false)
 const chartInstances = ref<Map<number, any>>(new Map())
 const graphVisibleMap = ref<Record<number, boolean>>({})
 
-const userAvatar = computed(() => userStore.user.avatar || userAvatarDefaultImg)
-const roleAvatar = computed(() => props.conversation.roleAvatar ?? roleAvatarDefaultImg)
+// 用户头像
+const userAvatar = computed(() => {
+  const avatar = userStore.user?.avatar
+  if (avatar && avatar !== '') {
+    return avatar
+  }
+  const nickname = userStore.user?.nickname || '用户'
+  return `https://api.dicebear.com/9.x/pixel-art/svg?seed=${nickname}&backgroundType=gradientLinear&backgroundColor=b6e3f4&radius=50`
+})
+
+// const roleAvatar = computed(() => props.conversation.roleAvatar ?? roleAvatarDefaultImg)
+const roleAvatar = computed(() => aiRobotIcon)
 
 const props = defineProps({
   conversation: {
@@ -450,5 +459,15 @@ defineExpose({ scrollToBottom, handlerGoTop })
   min-height: 400px;
   width: 100%;
   background: #fafafa;
+}
+
+.ai-avatar {
+  background-color: transparent !important;
+}
+
+.ai-avatar :deep(img) {
+  width: 24px !important;
+  height: 24px !important;
+  object-fit: contain;
 }
 </style>

@@ -52,10 +52,7 @@
               "
             >
               <div class="flex flex-row items-center">
-                <img
-                  class="w-6.25 h-6.25 rounded-1.25 flex flex-row justify-center"
-                  :src="conversation.roleAvatar || roleAvatarDefaultImg"
-                />
+                <el-avatar :size="24" :src="aiAvatar" class="ai-avatar flex-shrink-0" />
                 <span
                   class="py-0.5 px-2.5"
                   style="max-width: 220px; font-size: 14px; font-weight: 400; color: var(--el-text-color-regular); overflow: hidden; white-space: nowrap; text-overflow: ellipsis;"
@@ -108,12 +105,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, toRefs, nextTick } from 'vue'
+import { ref, onMounted, watch, toRefs, nextTick, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, Bottom, Top } from '@element-plus/icons-vue'
 import service from '@/config/axios'
 import type { ChatConversationVO } from '@/api/graph/chat/conversation'
-import roleAvatarDefaultImg from '@/assets/ai/gpt.svg'
+// ✅ 导入 AI 图标（与 MessageList 保持一致）
+import aiRobotIcon from '@/assets/ai/ai-robot.svg'
 
 const message = useMessage()
 
@@ -138,6 +136,9 @@ const emits = defineEmits([
   'onConversationClear',
   'onConversationDelete'
 ])
+
+// ✅ AI 头像（与 MessageList 保持一致）
+const aiAvatar = computed(() => aiRobotIcon)
 
 const getTimestamp = (time: Date | string | undefined): number => {
   if (!time) return 0
@@ -322,3 +323,15 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.ai-avatar {
+  background-color: transparent !important;
+}
+
+.ai-avatar :deep(img) {
+  width: 20px !important;
+  height: 20px !important;
+  object-fit: contain;
+}
+</style>
