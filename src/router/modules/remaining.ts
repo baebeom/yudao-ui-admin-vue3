@@ -97,17 +97,22 @@ const adminRoute: RouteRecordRaw = {
         roles: ['admin']
       }
     },
+
     {
-      path: 'database',
-      name: 'AdminDatabase',
-      component: () => import('@/views/admin/database/index.vue'),
+      path: 'neo4j',
+      name: 'CsvImportNeo4j',
+      // 组件路径：将之前的CsvImportNeo4j.vue放在这个位置
+      component: () => import('@/views/admin/neo4j/index.vue'),
       meta: {
-        title: '数据库导入',
+        title: 'CSV导入知识图谱', // 更准确的标题
         requiresAuth: true,
         icon: 'database',
-        activeMenu: '/admin/database',
+        // ✅ 修正activeMenu，与path一致，确保菜单高亮正确
+        activeMenu: '/admin/neo4j',
         noTagsView: false,
-        roles: ['admin']
+        roles: ['admin'],
+        // ✅ 添加接口对应的权限控制
+        permissions: ['graph:neo4j:csv:import', 'graph:neo4j:csv:query']
       }
     },
     {
