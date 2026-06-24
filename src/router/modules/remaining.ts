@@ -30,53 +30,12 @@ const homeRoute: RouteRecordRaw = {
 }
 
 // 农知问答
-// const graphRoute: RouteRecordRaw = {
-//   path: '/graph',
-//   component: () => import('@/layout/Layout.vue'),
-//   redirect: '/graph/chat',
-//   meta: {
-//     title: '农知问答',
-//     icon: 'chat-dot-VITE_APP_TITLE=round',
-//     hidden: false,
-//     noTagsView: false,
-//     roles: ['common', 'admin']
-//   },
-//   children: [
-//     {
-//       path: 'chat',
-//       name: 'GraphChat',
-//       component: () => import('@/views/graph/chat/index/index.vue'),
-//       meta: {
-//         title: '智能问答',
-//         requiresAuth: true,
-//         icon: 'chat-dot-round',
-//         activeMenu: '/graph/chat',
-//         noTagsView: false,
-//         roles: ['common', 'admin']
-//       }
-//     },
-//     {
-//       path: 'map',
-//       name: 'GraphMap',
-//       component: () => import('@/views/graph/map/index/index.vue'),
-//       meta: {
-//         title: '实体检测',
-//         requiresAuth: true,
-//         icon: 'share',
-//         activeMenu: '/graph/map',
-//         noTagsView: false,
-//         roles: ['common', 'admin']
-//       }
-//     }
-//   ]
-// }
-
 const graphRoute: RouteRecordRaw = {
   path: '/graph',
   component: () => import('@/layout/Layout.vue'),
-  redirect: '/graph/chat', 
+  redirect: '/graph/chat',
   meta: {
-    title: '知识库',
+    title: '农知问答',
     icon: 'chat-dot-round',
     hidden: false,
     noTagsView: false,
@@ -95,10 +54,22 @@ const graphRoute: RouteRecordRaw = {
         noTagsView: false,
         roles: ['common', 'admin']
       }
+    },
+    {
+      path: 'map',
+      name: 'GraphMap',
+      component: () => import('@/views/graph/map/index/index.vue'),
+      meta: {
+        title: '实体检测',
+        requiresAuth: true,
+        icon: 'share',
+        activeMenu: '/graph/map',
+        noTagsView: false,
+        roles: ['common', 'admin']
+      }
     }
   ]
 }
-
 
 // 后台管理
 const adminRoute: RouteRecordRaw = {
@@ -126,17 +97,22 @@ const adminRoute: RouteRecordRaw = {
         roles: ['admin']
       }
     },
+
     {
-      path: 'database',
-      name: 'AdminDatabase',
-      component: () => import('@/views/admin/database/index.vue'),
+      path: 'neo4j',
+      name: 'CsvImportNeo4j',
+      // 组件路径：将之前的CsvImportNeo4j.vue放在这个位置
+      component: () => import('@/views/admin/neo4j/index.vue'),
       meta: {
-        title: '数据库导入',
+        title: 'CSV导入知识图谱', // 更准确的标题
         requiresAuth: true,
         icon: 'database',
-        activeMenu: '/admin/database',
+        // ✅ 修正activeMenu，与path一致，确保菜单高亮正确
+        activeMenu: '/admin/neo4j',
         noTagsView: false,
-        roles: ['admin']
+        roles: ['admin'],
+        // ✅ 添加接口对应的权限控制
+        permissions: ['graph:neo4j:csv:import', 'graph:neo4j:csv:query']
       }
     },
     {

@@ -12,7 +12,12 @@
           <el-input v-model="searchParams.mobile" placeholder="请输入手机号" clearable />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="searchParams.status" placeholder="请选择状态" clearable style="width: 100px">
+          <el-select
+            v-model="searchParams.status"
+            placeholder="请选择状态"
+            clearable
+            style="width: 100px"
+          >
             <el-option label="启用" :value="0" />
             <el-option label="禁用" :value="1" />
           </el-select>
@@ -32,14 +37,18 @@
         <el-table-column prop="mobile" label="手机号" />
         <el-table-column prop="status" label="状态" width="80">
           <template #default="{ row }">
-            <!-- 后端：0=启用，1=禁用 -->
             <el-switch
               :model-value="row.status === 0"
               @update:model-value="(val) => handleStatusChange(row, val)"
             />
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" :formatter="dateFormatter" />
+        <el-table-column
+          prop="createTime"
+          label="创建时间"
+          width="180"
+          :formatter="dateFormatter"
+        />
         <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
@@ -57,7 +66,12 @@
       />
 
       <!-- 新增/编辑对话框 -->
-      <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose">
+      <el-dialog
+        v-model="dialogVisible"
+        :title="dialogTitle"
+        width="500px"
+        @close="handleDialogClose"
+      >
         <el-form :model="formData" :rules="rules" ref="formRef" label-width="100px">
           <el-form-item label="用户名" prop="username">
             <el-input v-model="formData.username" :disabled="dialogType === 'edit'" />
@@ -72,7 +86,6 @@
             <el-input v-model="formData.mobile" />
           </el-form-item>
           <el-form-item label="状态" prop="status">
-            <!-- 后端：0=启用，1=禁用 -->
             <el-radio-group v-model="formData.status">
               <el-radio :label="0">启用</el-radio>
               <el-radio :label="1">禁用</el-radio>
@@ -112,7 +125,7 @@ import { ContentWrap } from '@/components/ContentWrap'
 import Pagination from '@/components/Pagination/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UserAPI } from '@/api/admin'
-import type { UserVO, UserCreateReqVO, UserUpdateReqVO } from '@/api/admin/user'
+import type { UserVO, UserCreateReqVO, UserUpdateReqVO } from '@/api/admin/neo4j'
 import { formatDate } from '@/utils/formatTime'
 
 defineOptions({ name: 'UserManagement' })
@@ -150,7 +163,7 @@ const formData = reactive({
   email: '',
   mobile: '',
   password: '',
-  status: 0  // 默认启用
+  status: 0
 })
 
 const pwdDialogVisible = ref(false)
@@ -166,15 +179,13 @@ const rules = {
     { required: true, message: '请输入用户名', trigger: 'blur' },
     { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
   ],
-  nickname: [
-    { required: true, message: '请输入昵称', trigger: 'blur' },
-    { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
-  ],
+  // ✅ 修复：昵称 不必须
+  nickname: [{ min: 0, max: 20, message: '长度不能超过 20 个字符', trigger: 'blur' }],
   email: [
-    { 
+    {
       type: 'email',
-      message: '请输入正确的邮箱地址', 
-      trigger: 'blur' 
+      message: '请输入正确的邮箱地址',
+      trigger: 'blur'
     }
   ],
   mobile: [
@@ -228,9 +239,9 @@ const getList = async () => {
     if (searchParams.nickname) params.nickname = searchParams.nickname
     if (searchParams.mobile) params.mobile = searchParams.mobile
     if (searchParams.status !== undefined) params.status = searchParams.status
-    
+
     const res = await UserAPI.getUserPage(params)
-    
+
     userList.value = res?.list || []
     total.value = res?.total || 0
   } catch (error) {
@@ -259,14 +270,14 @@ const resetSearch = () => {
 const handleAdd = () => {
   dialogType.value = 'add'
   dialogTitle.value = '新增用户'
-  Object.assign(formData, { 
-    id: 0, 
-    username: '', 
-    nickname: '', 
-    email: '', 
-    mobile: '', 
+  Object.assign(formData, {
+    id: 0,
+    username: '',
+    nickname: '',
+    email: '',
+    mobile: '',
     password: '',
-    status: 0  // 默认启用
+    status: 0
   })
   dialogVisible.value = true
 }
@@ -274,12 +285,11 @@ const handleAdd = () => {
 const handleEdit = (row: UserVO) => {
   dialogType.value = 'edit'
   dialogTitle.value = '编辑用户'
-  // 状态：后端返回 0=启用，1=禁用
   const statusValue = typeof row.status === 'number' ? row.status : Number(row.status)
   Object.assign(formData, {
     id: row.id,
     username: row.username,
-    nickname: row.nickname,
+    nickname: row.nickname || '',
     email: row.email || '',
     mobile: row.mobile || '',
     status: statusValue,
@@ -298,48 +308,43 @@ const handleDelete = (row: UserVO) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(async () => {
-    try {
-      const res = await UserAPI.deleteUser(row.id)
-      if (res === true) {
-        ElMessage.success('删除成功')
-        getList()
-      } else {
+  })
+    .then(async () => {
+      try {
+        const res = await UserAPI.deleteUser(row.id)
+        if (res === true) {
+          ElMessage.success('删除成功')
+          getList()
+        } else {
+          ElMessage.error('删除失败')
+        }
+      } catch (error) {
+        console.error('删除失败:', error)
         ElMessage.error('删除失败')
       }
-    } catch (error) {
-      console.error('删除失败:', error)
-      ElMessage.error('删除失败')
-    }
-  }).catch(() => {})
+    })
+    .catch(() => {})
 }
 
 // ============ 修改状态 ============
-// 后端状态：0=启用，1=禁用
-// 开关：true=启用(0)，false=禁用(1)
 const handleStatusChange = async (row: UserVO, value: boolean) => {
-  // 保存原始状态
   const originalStatus = row.status
-  // 开关打开(value=true) -> 启用状态(0)，开关关闭(value=false) -> 禁用状态(1)
   const newStatus = value ? 0 : 1
-  
-  // 乐观更新：先更新界面显示
+
   row.status = newStatus as any
-  
+
   try {
     const res = await UserAPI.updateUserStatus({
       id: row.id,
       status: newStatus
     })
     if (res !== true) {
-      // 更新失败，恢复原始状态
       row.status = originalStatus
       ElMessage.error('状态修改失败')
     } else {
       ElMessage.success(value ? '用户已启用' : '用户已禁用')
     }
   } catch (error) {
-    // 出错，恢复原始状态
     row.status = originalStatus
     ElMessage.error('状态修改失败')
   }
@@ -354,17 +359,22 @@ const handleResetPwd = (row: UserVO) => {
 }
 
 const handleSubmitPwd = async () => {
-  await pwdFormRef.value?.validate()
+  try {
+    await pwdFormRef.value?.validate()
+  } catch {
+    return
+  }
+
   pwdLoading.value = true
-  
+
   try {
     if (!currentUser.value) return
-    
+
     const res = await UserAPI.resetUserPassword({
       id: currentUser.value.id,
       password: pwdForm.password
     })
-    
+
     if (res === true) {
       ElMessage.success('密码重置成功')
       pwdDialogVisible.value = false
@@ -381,21 +391,29 @@ const handleSubmitPwd = async () => {
 
 // ============ 提交表单 ============
 const handleSubmit = async () => {
-  await formRef.value?.validate()
+  // 表单验证
+  try {
+    await formRef.value?.validate()
+  } catch (e) {
+    console.log('表单验证失败', e)
+    return
+  }
+
   submitLoading.value = true
-  
+
   try {
     if (dialogType.value === 'add') {
-      const createData: UserCreateReqVO = {
+      // 新增：传用户名
+      const createData = {
         username: formData.username,
         nickname: formData.nickname,
         email: formData.email || undefined,
         mobile: formData.mobile || undefined,
         password: formData.password,
-        status: formData.status  // 0=启用，1=禁用
+        status: formData.status
       }
       const res = await UserAPI.createUser(createData)
-      if (res && res > 0) {
+      if (res) {
         ElMessage.success('新增成功')
         dialogVisible.value = false
         getList()
@@ -403,12 +421,16 @@ const handleSubmit = async () => {
         ElMessage.error('新增失败')
       }
     } else {
-      const updateData: UserUpdateReqVO = {
+      // ==========================
+      // ✅ 核心修复：编辑 绝对不传 username！！！
+      // ==========================
+      const updateData = {
         id: formData.id,
-        nickname: formData.nickname,
+        nickname: formData.nickname, // 只传昵称
         email: formData.email || undefined,
         mobile: formData.mobile || undefined,
-        status: formData.status  // 0=启用，1=禁用
+        status: formData.status
+        // 一定不要写 username！！！
       }
       const res = await UserAPI.updateUser(updateData)
       if (res === true) {
@@ -419,9 +441,9 @@ const handleSubmit = async () => {
         ElMessage.error('更新失败')
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('提交失败:', error)
-    ElMessage.error('操作失败')
+    ElMessage.error('操作失败：' + (error?.msg || '系统异常'))
   } finally {
     submitLoading.value = false
   }
