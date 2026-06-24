@@ -30,12 +30,53 @@ const homeRoute: RouteRecordRaw = {
 }
 
 // 农知问答
+// const graphRoute: RouteRecordRaw = {
+//   path: '/graph',
+//   component: () => import('@/layout/Layout.vue'),
+//   redirect: '/graph/chat',
+//   meta: {
+//     title: '农知问答',
+//     icon: 'chat-dot-VITE_APP_TITLE=round',
+//     hidden: false,
+//     noTagsView: false,
+//     roles: ['common', 'admin']
+//   },
+//   children: [
+//     {
+//       path: 'chat',
+//       name: 'GraphChat',
+//       component: () => import('@/views/graph/chat/index/index.vue'),
+//       meta: {
+//         title: '智能问答',
+//         requiresAuth: true,
+//         icon: 'chat-dot-round',
+//         activeMenu: '/graph/chat',
+//         noTagsView: false,
+//         roles: ['common', 'admin']
+//       }
+//     },
+//     {
+//       path: 'map',
+//       name: 'GraphMap',
+//       component: () => import('@/views/graph/map/index/index.vue'),
+//       meta: {
+//         title: '实体检测',
+//         requiresAuth: true,
+//         icon: 'share',
+//         activeMenu: '/graph/map',
+//         noTagsView: false,
+//         roles: ['common', 'admin']
+//       }
+//     }
+//   ]
+// }
+
 const graphRoute: RouteRecordRaw = {
   path: '/graph',
   component: () => import('@/layout/Layout.vue'),
-  redirect: '/graph/chat',
+  redirect: '/graph/chat', 
   meta: {
-    title: '农知问答',
+    title: '知识库',
     icon: 'chat-dot-round',
     hidden: false,
     noTagsView: false,
@@ -54,22 +95,10 @@ const graphRoute: RouteRecordRaw = {
         noTagsView: false,
         roles: ['common', 'admin']
       }
-    },
-    {
-      path: 'map',
-      name: 'GraphMap',
-      component: () => import('@/views/graph/map/index/index.vue'),
-      meta: {
-        title: '实体检测',
-        requiresAuth: true,
-        icon: 'share',
-        activeMenu: '/graph/map',
-        noTagsView: false,
-        roles: ['common', 'admin']
-      }
     }
   ]
 }
+
 
 // 后台管理
 const adminRoute: RouteRecordRaw = {

@@ -15,7 +15,8 @@
           </div>
           <div class="greeting-section">
             <h1 class="greeting-title">您好，{{ nickname }}！</h1>
-            <p class="greeting-subtitle">欢迎使用农知问答系统</p>
+            <!-- <p class="greeting-subtitle">欢迎使用农知问答系统</p> -->
+            <p class="greeting-subtitle">欢迎使用知识点问答小知识库</p>           
           </div>
         </div>
       </el-card>
@@ -43,8 +44,8 @@
               <span class="card-header">系统信息</span>
             </template>
             <el-descriptions :column="2" border>
-              <el-descriptions-item label="系统版本">v1.0.0</el-descriptions-item>
-              <el-descriptions-item label="知识图谱版本">v2.0</el-descriptions-item>
+              <!-- <el-descriptions-item label="系统版本">v1.0.0</el-descriptions-item> -->
+              <!-- <el-descriptions-item label="知识图谱版本">v2.0</el-descriptions-item> -->
               <el-descriptions-item label="当前时间">{{ currentTime }}</el-descriptions-item>
               <el-descriptions-item label="登录身份">{{ loginTypeText }}</el-descriptions-item>
             </el-descriptions>
@@ -109,13 +110,13 @@ const quickEntries = computed(() => {
       icon: ChatDotRound,
       color: '#409EFF'
     },
-    {
-      title: '实体检测',
-      desc: '实体关系检测',
-      path: '/graph/map',
-      icon: Share,
-      color: '#67C23A'
-    }
+    // {
+    //   title: '实体检测',
+    //   desc: '实体关系检测',
+    //   path: '/graph/map',
+    //   icon: Share,
+    //   color: '#67C23A'
+    // }
   ]
   
   const adminEntry = {
@@ -127,7 +128,7 @@ const quickEntries = computed(() => {
   }
   
   const profileEntry = {
-    title: '个人资料',
+    title: '个人中心',
     desc: '查看修改个人信息',
     path: '/profile/index',
     icon: Setting,

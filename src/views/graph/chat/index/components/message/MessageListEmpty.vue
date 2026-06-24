@@ -18,10 +18,11 @@
 
 <script setup lang="ts">
 const promptList = [
-  { prompt: '崇明县适合种什么植物？' },
-  { prompt: '中国的首都的气候类型是什么？' },
-  { prompt: '胡萝卜汁含有哪些营养成分？' },
-  { prompt: '大豆的植物学分类是什么？' }
+  { prompt: '什么是计算机网络？' },
+  { prompt: 'TCP和UDP的区别有哪些？' },
+  { prompt: '网络时延分为哪四类？' },
+  { prompt: '集线器、交换机、路由器有什么区别？' },
+  { prompt: 'TCP三大核心机制？' }
 ] // prompt 列表
 
 const emits = defineEmits(['onPrompt'])
