@@ -124,8 +124,16 @@
 import { ContentWrap } from '@/components/ContentWrap'
 import Pagination from '@/components/Pagination/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { UserAPI } from '@/api/admin'
-import type { UserVO, UserCreateReqVO, UserUpdateReqVO } from '@/api/admin/neo4j'
+import {
+  getUserPage,
+  getUser,
+  createUser,
+  updateUser,
+  deleteUser,
+  resetUserPassword,
+  updateUserStatus
+} from '@/api/admin/user'
+import type { UserVO, UserCreateReqVO, UserUpdateReqVO } from '@/api/admin/user'
 import { formatDate } from '@/utils/formatTime'
 
 defineOptions({ name: 'UserManagement' })
@@ -240,7 +248,7 @@ const getList = async () => {
     if (searchParams.mobile) params.mobile = searchParams.mobile
     if (searchParams.status !== undefined) params.status = searchParams.status
 
-    const res = await UserAPI.getUserPage(params)
+    const res = await getUserPage(params)
 
     userList.value = res?.list || []
     total.value = res?.total || 0
@@ -311,7 +319,7 @@ const handleDelete = (row: UserVO) => {
   })
     .then(async () => {
       try {
-        const res = await UserAPI.deleteUser(row.id)
+        const res = await deleteUser(row.id)
         if (res === true) {
           ElMessage.success('删除成功')
           getList()
@@ -334,7 +342,7 @@ const handleStatusChange = async (row: UserVO, value: boolean) => {
   row.status = newStatus as any
 
   try {
-    const res = await UserAPI.updateUserStatus({
+    const res = await updateUserStatus({
       id: row.id,
       status: newStatus
     })
@@ -370,7 +378,7 @@ const handleSubmitPwd = async () => {
   try {
     if (!currentUser.value) return
 
-    const res = await UserAPI.resetUserPassword({
+    const res = await resetUserPassword({
       id: currentUser.value.id,
       password: pwdForm.password
     })
@@ -412,7 +420,7 @@ const handleSubmit = async () => {
         password: formData.password,
         status: formData.status
       }
-      const res = await UserAPI.createUser(createData)
+      const res = await createUser(createData)
       if (res) {
         ElMessage.success('新增成功')
         dialogVisible.value = false
@@ -421,18 +429,14 @@ const handleSubmit = async () => {
         ElMessage.error('新增失败')
       }
     } else {
-      // ==========================
-      // ✅ 核心修复：编辑 绝对不传 username！！！
-      // ==========================
       const updateData = {
         id: formData.id,
-        nickname: formData.nickname, // 只传昵称
+        nickname: formData.nickname,
         email: formData.email || undefined,
         mobile: formData.mobile || undefined,
         status: formData.status
-        // 一定不要写 username！！！
       }
-      const res = await UserAPI.updateUser(updateData)
+      const res = await updateUser(updateData)
       if (res === true) {
         ElMessage.success('更新成功')
         dialogVisible.value = false

@@ -7,7 +7,7 @@
         :model="queryParams"
         ref="queryFormRef"
         :inline="true"
-        label-width="68px"
+        label-width="70px"
       >
         <el-form-item label="用户编号" prop="userId">
           <el-input-number
